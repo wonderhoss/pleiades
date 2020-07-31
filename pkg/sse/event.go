@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-// Event is a go representation of an http server-sent event
+// Event is a go representation of an HTTP server-sent event
 type Event struct {
 	URI  string
 	Type string

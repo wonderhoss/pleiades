@@ -14,7 +14,7 @@ import (
 var client = &http.Client{}
 
 func liveReq(verb, uri string, body io.Reader) (*http.Request, error) {
-	req, err := GetReq(verb, uri, body)
+	req, err := http.NewRequest(verb, uri, body)
 	if err != nil {
 		return nil, err
 	}
@@ -24,11 +24,25 @@ func liveReq(verb, uri string, body io.Reader) (*http.Request, error) {
 	return req, nil
 }
 
-//GetReq is a function to return a single request. It will be used by notify to
-//get a request and can be replaces if additional configuration is desired on
-//the request. The "Accept" header will necessarily be overwritten.
-var GetReq = func(verb, uri string, body io.Reader) (*http.Request, error) {
-	return http.NewRequest(verb, uri, body)
+func parseLine(bs []byte, currEvent *Event) {
+	spl := bytes.SplitN(bs, delim, 2)
+	if len(spl) < 2 {
+		if spl[0][0] == 0x003A { // a colon (:) - means this is a comment in the stream
+			return
+		}
+		// else: log non-compliant line and continue
+	}
+	switch string(spl[0]) {
+	case iName:
+		currEvent.ID = string(bytes.TrimSpace(spl[1]))
+	case eName:
+		currEvent.Type = string(bytes.TrimSpace(spl[1]))
+	case dName:
+		if currEvent.data.Len() > 0 {
+			currEvent.data.WriteByte(byte(0x000A))
+		}
+		currEvent.data.Write(bytes.TrimSpace(spl[1]))
+	}
 }
 
 //Notify takes the uri of an SSE stream and channel, and will send an Event
@@ -73,32 +87,11 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
 				continue
 			}
 
-			spl := bytes.SplitN(bs, delim, 2)
-			if len(spl) < 2 {
-				if spl[0][0] == 0x003A { // a colon (:) - means this is a comment in the stream
-					continue
-				}
-				// else: log non-compliant line and continue
-			}
-			parseLine(spl, currEvent)
+			parseLine(bs, currEvent)
 
 			if err == io.EOF {
 				break
 			}
 		}
-	}
-}
-
-func parseLine(spl [][]byte, currEvent *Event) {
-	switch string(spl[0]) {
-	case iName:
-		currEvent.ID = string(bytes.TrimSpace(spl[1]))
-	case eName:
-		currEvent.Type = string(bytes.TrimSpace(spl[1]))
-	case dName:
-		if currEvent.data.Len() > 0 {
-			currEvent.data.WriteByte(byte(0x000A))
-		}
-		currEvent.data.Write(bytes.TrimSpace(spl[1]))
 	}
 }

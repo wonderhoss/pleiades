@@ -13,15 +13,19 @@ import (
 	"github.com/gargath/pleiades/pkg/spinner"
 )
 
+// Consumer ingests an SSE stream from WMF and processes each event in turn
 type Consumer struct {
 	MsgReceived int
 	MsgRead     int
+	LastMsgID   string
 	stop        chan (bool)
 	events      chan *sse.Event
 	wg          sync.WaitGroup
 	spinner     *spinner.Spinner
 }
 
+// Start begins consumption of the SSE stream
+// If the current terminal is a TTY, it will output a progress spinner
 func (c *Consumer) Start() {
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
@@ -77,8 +81,10 @@ func (c *Consumer) Start() {
 						fmt.Printf("Error writing msg to file: %v\n", err)
 					}
 					c.MsgRead++
+					c.LastMsgID = e.ID
 				}
 			case <-c.stop:
+				fmt.Printf("Last message consumed: %s\n", c.LastMsgID)
 				return
 			}
 		}
@@ -86,6 +92,8 @@ func (c *Consumer) Start() {
 	c.wg.Wait()
 }
 
+// Stop will stop the consumer, close the connection and request all goroutines to exit
+// It blocks until shutdown is complete
 func (c *Consumer) Stop() {
 	close(c.stop)
 	close(c.events)
