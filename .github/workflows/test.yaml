@@ -27,4 +27,4 @@ jobs:
                 export PATH=$GOPATH/bin:$PATH
                 ./configure
             - name: Run Tests
-              run: make test
+              run: make check
