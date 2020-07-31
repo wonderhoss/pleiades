@@ -1,3 +1,5 @@
+astuart.co/go-sse v0.0.0-20170313210228-b4959b80efe5 h1:21NxdRdRzcvG+lFtMqONbk3FyI9YKKOo6J5ZCgQPLZk=
+astuart.co/go-sse v0.0.0-20170313210228-b4959b80efe5/go.mod h1:mSWEpSmNpt/b+5K+2MxMz3nnRwT6VXc0HKqJ50CpQw8=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
