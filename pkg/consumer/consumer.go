@@ -1,15 +1,13 @@
 package consumer
 
 import (
-	"fmt"
+	"log"
 	"sync"
 	"time"
 
-	"github.com/gargath/pleiades/pkg/sse"
-
-	"github.com/gargath/pleiades/pkg/spinner"
-
 	"github.com/gargath/pleiades/pkg/publisher/file"
+	"github.com/gargath/pleiades/pkg/spinner"
+	"github.com/gargath/pleiades/pkg/sse"
 )
 
 var lastEventID string
@@ -35,7 +33,7 @@ func (c *Consumer) Start() (string, error) {
 	}
 
 	if !spinner.IsTTY() {
-		fmt.Printf("Terminal is not a TTY, not displaying progress indicator")
+		log.Printf("Terminal is not a TTY, not displaying progress indicator")
 	} else {
 		c.spinner = spinner.NewSpinner("Processing... ")
 		c.wg.Add(1)
@@ -59,7 +57,7 @@ func (c *Consumer) Start() (string, error) {
 		eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", c.events, c.stop)
 		lastEventID = eid
 		if err != nil && err == sse.ErrNilChan {
-			fmt.Printf("Event consumer exited with error: %v", err)
+			log.Printf("Event consumer exited with error: %v", err)
 		}
 	}()
 
@@ -68,9 +66,9 @@ func (c *Consumer) Start() (string, error) {
 		defer c.wg.Done()
 		count, err := f.ReadAndPublish()
 		if err != nil {
-			fmt.Printf("File Publisher exited with error after processing %d events: %s", count, err)
+			log.Printf("File Publisher exited with error after processing %d events: %s", count, err)
 		} else {
-			fmt.Printf("File Publisher finished after processing %d events\n", count)
+			log.Printf("File Publisher finished after processing %d events\n", count)
 		}
 	}()
 

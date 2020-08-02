@@ -50,14 +50,15 @@ var _ = Describe("SSE Consumer", func() {
 		clChan := make(chan bool)
 		var wg sync.WaitGroup
 		events := []Event{}
-		wg.Add(2)
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for e := range evChan {
 				events = append(events, *e)
 			}
 		}()
-		go func() {
+		wg.Add(1)
+		go func() { // TODO: This is a bit of a hack. The consumer should terminate naturally when the server connection closes. For some reason, it does not.
 			defer wg.Done()
 			time.Sleep(2 * time.Second)
 			close(clChan)
@@ -94,7 +95,6 @@ var _ = Describe("SSE Consumer", func() {
 			_, err := Notify(server.URL, evChan, clChan)
 			close(evChan)
 			wg.Wait()
-			fmt.Printf("Error on 404 is: %v\n", err)
 			Expect(err).To(HaveOccurred())
 			Expect(strings.Contains(err.Error(), "non 2xx status code")).To(BeTrue(), "expected error %v to contain 'non 2xx status code'", err)
 			Expect(len(events)).Should(Equal(0))
@@ -120,7 +120,6 @@ var _ = Describe("SSE Consumer", func() {
 			_, err := Notify(server.URL, evChan, clChan)
 			close(evChan)
 			wg.Wait()
-			fmt.Printf("Error on content length: %v\n", err)
 			Expect(err).To(HaveOccurred())
 			Expect(strings.Contains(err.Error(), "EOF")).To(BeTrue(), "expected error %v to contain 'EOF'", err)
 			Expect(len(events)).Should(Equal(0))

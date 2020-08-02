@@ -24,7 +24,7 @@ func NewPublisher(src <-chan *sse.Event, dest string) (publisher.Publisher, erro
 			panic(err)
 		}
 	} else if o.Mode().IsRegular() {
-		panic(fmt.Errorf("destination path %s exists as file", dest))
+		return nil, fmt.Errorf("destination path %s exists as file", dest)
 	}
 	f := &Publisher{
 		source:      src,

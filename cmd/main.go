@@ -36,15 +36,15 @@ func main() {
 	signal.Notify(quit, os.Interrupt)
 	go func() {
 		<-quit
-		fmt.Println("Shutting down...")
+		log.Println("Shutting down...")
 		c.Stop()
 	}()
 
-	fmt.Printf("Starting to consume events\n")
+	log.Printf("Starting to consume events\n")
 	lastEventID, err := c.Start()
 	if err != nil {
-		fmt.Printf("Event consumer exited with error: %v", err)
+		log.Printf("Event consumer exited with error: %v", err)
 	}
-	fmt.Println("Shutdown complete")
-	fmt.Printf("Last seen Event ID: %s", lastEventID)
+	log.Println("Shutdown complete")
+	log.Printf("Last seen Event ID: %s", lastEventID)
 }

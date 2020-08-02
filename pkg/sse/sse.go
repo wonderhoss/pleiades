@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -30,8 +31,9 @@ func parseLine(bs []byte, currEvent *Event) {
 	if len(spl) < 2 {
 		if spl[0][0] == 0x003A { // a colon (:) - means this is a comment in the stream
 			return
+		} else {
+			log.Printf("WARN: encountered non-SSE-compliant line in server response: %s", string(bs))
 		}
-		// else: log non-compliant line and continue
 	}
 	switch string(spl[0]) {
 	case iName:
@@ -99,7 +101,8 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error
 			parseLine(bs, currEvent)
 
 			if err == io.EOF {
-				break
+				log.Printf("encountered EOF while reading server response - consumer terminating")
+				return lastEventID, nil
 			}
 		}
 	}
