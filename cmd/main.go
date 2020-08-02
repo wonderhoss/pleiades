@@ -41,6 +41,10 @@ func main() {
 	}()
 
 	fmt.Printf("Starting to consume events\n")
-	c.Start()
+	lastEventID, err := c.Start()
+	if err != nil {
+		fmt.Printf("Event consumer exited with error: %v", err)
+	}
 	fmt.Println("Shutdown complete")
+	fmt.Printf("Last seen Event ID: %s", lastEventID)
 }

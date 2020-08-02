@@ -12,6 +12,7 @@ import (
 )
 
 var client = &http.Client{}
+var lastEventID string
 
 func liveReq(verb, uri string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(verb, uri, body)
@@ -34,7 +35,9 @@ func parseLine(bs []byte, currEvent *Event) {
 	}
 	switch string(spl[0]) {
 	case iName:
-		currEvent.ID = string(bytes.TrimSpace(spl[1]))
+		e := string(bytes.TrimSpace(spl[1]))
+		currEvent.ID = e
+		lastEventID = e
 	case eName:
 		currEvent.Type = string(bytes.TrimSpace(spl[1]))
 	case dName:
@@ -49,22 +52,22 @@ func parseLine(bs []byte, currEvent *Event) {
 //down the channel when recieved, until the stream is closed. It will then
 //close the stream. This is blocking, and so you will likely want to call this
 //in a new goroutine (via `go Notify(..)`)
-func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
+func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error) {
 	if evCh == nil {
-		return ErrNilChan
+		return lastEventID, ErrNilChan
 	}
 
 	req, err := liveReq("GET", uri, nil)
 	if err != nil {
-		return fmt.Errorf("error getting sse request: %v", err)
+		return lastEventID, fmt.Errorf("error getting sse request: %v", err)
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("error performing request for %s: %v", uri, err)
+		return lastEventID, fmt.Errorf("error performing request for %s: %v", uri, err)
 	}
 	if res.StatusCode > 299 {
-		return fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
+		return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
 	}
 
 	br := bufio.NewReader(res.Body)
@@ -77,12 +80,12 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
 	for {
 		select {
 		case <-stopChan:
-			return nil
+			return lastEventID, nil
 		default:
 			bs, err := br.ReadBytes('\n')
 
 			if err != nil && err != io.EOF {
-				return fmt.Errorf("error reading from response body: %v", err)
+				return lastEventID, fmt.Errorf("error reading from response body: %v", err)
 			}
 
 			if len(bs) < 2 { //newline indicates end of event, emit this one, start populating a new one
