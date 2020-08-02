@@ -2,37 +2,40 @@ package consumer
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"sync"
 	"time"
 
-	//	sse "astuart.co/go-sse"
-	sse "github.com/gargath/pleiades/pkg/sse"
+	"github.com/gargath/pleiades/pkg/sse"
 
 	"github.com/gargath/pleiades/pkg/spinner"
+
+	"github.com/gargath/pleiades/pkg/publisher/file"
 )
 
 // Consumer ingests an SSE stream from WMF and processes each event in turn
 type Consumer struct {
-	MsgReceived int
-	MsgRead     int
-	LastMsgID   string
-	stop        chan (bool)
-	events      chan *sse.Event
-	wg          sync.WaitGroup
-	spinner     *spinner.Spinner
+	LastMsgID string
+	stop      chan (bool)
+	events    chan *sse.Event
+	wg        sync.WaitGroup
+	spinner   *spinner.Spinner
 }
 
 // Start begins consumption of the SSE stream
 // If the current terminal is a TTY, it will output a progress spinner
-func (c *Consumer) Start() {
+func (c *Consumer) Start() error {
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
+
+	f, err := file.NewPublisher(c.events, "./events")
+	if err != nil {
+		return err
+	}
+
 	if !spinner.IsTTY() {
 		fmt.Printf("Terminal is not a TTY, not displaying progress indicator")
 	} else {
-		c.spinner = spinner.NewSpinner("Working... ")
+		c.spinner = spinner.NewSpinner("Processing... ")
 		c.wg.Add(1)
 		go func() {
 			defer c.wg.Done()
@@ -41,55 +44,35 @@ func (c *Consumer) Start() {
 				case <-c.stop:
 					return
 				default:
-					c.spinner.Tick(fmt.Sprintf("Received: %d, Read: %d", c.MsgReceived, c.MsgRead))
+					c.spinner.Tick()
 					time.Sleep(100 * time.Millisecond)
 				}
 			}
 		}()
 	}
+
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
 		err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", c.events, c.stop)
 		if err != nil && err == sse.ErrNilChan {
-			panic(err)
+			fmt.Printf("Event consumer exited with error: %v", err)
 		}
 	}()
+
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		o, err := os.Stat("events")
-		if os.IsNotExist(err) {
-			errDir := os.MkdirAll("events", 0755)
-			if errDir != nil {
-				panic(err)
-			}
-		} else if o.Mode().IsRegular() {
-			panic(fmt.Errorf("events directory exists as file"))
-		}
-		for {
-			select {
-			case e := <-c.events:
-				c.MsgReceived++
-				if e != nil {
-					d, err := ioutil.ReadAll(e.GetData())
-					if err != nil {
-						fmt.Printf("Error reading msg: %v\n", err)
-					}
-					err = ioutil.WriteFile(fmt.Sprintf("events/event-%d.dat", c.MsgRead), d, 0644)
-					if err != nil {
-						fmt.Printf("Error writing msg to file: %v\n", err)
-					}
-					c.MsgRead++
-					c.LastMsgID = e.ID
-				}
-			case <-c.stop:
-				fmt.Printf("Last message consumed: %s\n", c.LastMsgID)
-				return
-			}
+		count, err := f.ReadAndPublish()
+		if err != nil {
+			fmt.Printf("File Publisher exited with error after processing %d events: %s", count, err)
+		} else {
+			fmt.Printf("File Publisher finished after processing %d events\n", count)
 		}
 	}()
+
 	c.wg.Wait()
+	return nil
 }
 
 // Stop will stop the consumer, close the connection and request all goroutines to exit

@@ -65,6 +65,7 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
 	}
 
 	br := bufio.NewReader(res.Body)
+
 	defer res.Body.Close()
 
 	var currEvent *Event
@@ -80,10 +81,16 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
 			if err != nil && err != io.EOF {
 				return err
 			}
+			if len(bs) == 0 {
+				fmt.Println("Read from body buffer returned 0 bytes. Did server go away?")
+				return nil
+			}
 
 			if len(bs) < 2 { //newline indicates end of event, emit this one, start populating a new one
-				evCh <- currEvent
-				currEvent = &Event{URI: uri, data: new(bytes.Buffer)}
+				if currEvent.ID != "" || currEvent.Type != "" || currEvent.data.Len() > 0 {
+					evCh <- currEvent
+					currEvent = &Event{URI: uri, data: new(bytes.Buffer)}
+				}
 				continue
 			}
 

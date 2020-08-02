@@ -40,7 +40,7 @@ func main() {
 		c.Stop()
 	}()
 
-	fmt.Printf("Starting consumer...\n")
+	fmt.Printf("Starting to consume events\n")
 	c.Start()
-	fmt.Printf("Consumed %d messages\n", c.MsgRead)
+	fmt.Println("Shutdown complete")
 }
