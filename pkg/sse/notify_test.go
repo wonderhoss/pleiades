@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,16 +46,22 @@ var _ = Describe("SSE Consumer", func() {
 
 	It("reads and processes events", func() {
 		evChan := make(chan *Event)
+		clChan := make(chan bool)
 		var wg sync.WaitGroup
 		events := []Event{}
-		wg.Add(1)
+		wg.Add(2)
 		go func() {
 			defer wg.Done()
 			for e := range evChan {
 				events = append(events, *e)
 			}
 		}()
-		err := Notify(server.URL, evChan, nil)
+		go func() {
+			defer wg.Done()
+			time.Sleep(2 * time.Second)
+			close(clChan)
+		}()
+		err := Notify(server.URL, evChan, clChan)
 		close(evChan)
 		wg.Wait()
 		Expect(err).NotTo(HaveOccurred())
