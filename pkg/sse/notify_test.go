@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"time"
 
@@ -70,5 +71,58 @@ var _ = Describe("SSE Consumer", func() {
 		Expect(events[1].Type).Should(Equal("message"))
 		Expect(events[0].ID).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
 		Expect(events[1].ID).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
+	})
+
+	Context("when a server error occurs", func() {
+		It("exist cleanly on 404", func() {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(404)
+			}))
+			defer server.Close()
+			evChan := make(chan *Event)
+			clChan := make(chan bool)
+			var wg sync.WaitGroup
+			events := []Event{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for e := range evChan {
+					events = append(events, *e)
+				}
+			}()
+			err := Notify(server.URL, evChan, clChan)
+			close(evChan)
+			wg.Wait()
+			fmt.Printf("Error on 404 is: %v\n", err)
+			Expect(err).To(HaveOccurred())
+			Expect(strings.Contains(err.Error(), "non 2xx status code")).To(BeTrue(), "expected error %v to contain 'non 2xx status code'", err)
+			Expect(len(events)).Should(Equal(0))
+		})
+
+		It("exist cleanly on malformed resposne", func() {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Length", "77")
+				w.WriteHeader(200)
+			}))
+			defer server.Close()
+			evChan := make(chan *Event)
+			clChan := make(chan bool)
+			var wg sync.WaitGroup
+			events := []Event{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for e := range evChan {
+					events = append(events, *e)
+				}
+			}()
+			err := Notify(server.URL, evChan, clChan)
+			close(evChan)
+			wg.Wait()
+			fmt.Printf("Error on content length: %v\n", err)
+			Expect(err).To(HaveOccurred())
+			Expect(strings.Contains(err.Error(), "EOF")).To(BeTrue(), "expected error %v to contain 'EOF'", err)
+			Expect(len(events)).Should(Equal(0))
+		})
 	})
 })
