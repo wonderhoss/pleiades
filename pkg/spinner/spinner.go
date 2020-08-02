@@ -21,9 +21,15 @@ func NewSpinner(msg string) *Spinner {
 	return &Spinner{message: msg}
 }
 
-// Tick prints the spinner message to stdout and advances the spinner by one tick
-func (s *Spinner) Tick(update string) {
+// TickWithUpdate prints the spinner message to stdout and advances the spinner by one tick
+func (s *Spinner) TickWithUpdate(update string) {
 	fmt.Printf("%s %c - %s \r", s.message, spinChars[s.i], update)
+	s.i = (s.i + 1) % len(spinChars)
+}
+
+// Tick prints the spinner character to stdout and advances the spinner by one tick
+func (s *Spinner) Tick() {
+	fmt.Printf("%s %c\r", s.message, spinChars[s.i])
 	s.i = (s.i + 1) % len(spinChars)
 }
 

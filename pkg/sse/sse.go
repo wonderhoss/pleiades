@@ -63,8 +63,12 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
 	if err != nil {
 		return fmt.Errorf("error performing request for %s: %v", uri, err)
 	}
+	if res.StatusCode > 299 {
+		return fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
+	}
 
 	br := bufio.NewReader(res.Body)
+
 	defer res.Body.Close()
 
 	var currEvent *Event
@@ -78,12 +82,14 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) error {
 			bs, err := br.ReadBytes('\n')
 
 			if err != nil && err != io.EOF {
-				return err
+				return fmt.Errorf("error reading from response body: %v", err)
 			}
 
 			if len(bs) < 2 { //newline indicates end of event, emit this one, start populating a new one
-				evCh <- currEvent
-				currEvent = &Event{URI: uri, data: new(bytes.Buffer)}
+				if currEvent.ID != "" || currEvent.Type != "" || currEvent.data.Len() > 0 {
+					evCh <- currEvent
+					currEvent = &Event{URI: uri, data: new(bytes.Buffer)}
+				}
 				continue
 			}
 
