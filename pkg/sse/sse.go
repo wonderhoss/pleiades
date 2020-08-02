@@ -31,9 +31,8 @@ func parseLine(bs []byte, currEvent *Event) {
 	if len(spl) < 2 {
 		if spl[0][0] == 0x003A { // a colon (:) - means this is a comment in the stream
 			return
-		} else {
-			log.Printf("WARN: encountered non-SSE-compliant line in server response: %s", string(bs))
 		}
+		log.Printf("WARN: encountered non-SSE-compliant line in server response: %s", string(bs))
 	}
 	switch string(spl[0]) {
 	case iName:
