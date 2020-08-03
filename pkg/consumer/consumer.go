@@ -79,7 +79,7 @@ func (c *Consumer) Start() (string, error) {
 					eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", c.events, c.stop)
 					restarts.WithLabelValues("wmf_consumer").Inc()
 					lastEventID = eid
-					if err != nil && err == sse.ErrNilChan {
+					if err != nil {
 						logger.Errorf("Event consumer exited with error: %v", err)
 					}
 				}
