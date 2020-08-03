@@ -59,14 +59,15 @@ func main() {
 	flag.Bool("help", false, "print this help and exit")
 	flag.String("metricsPort", "9000", "the port to serve Prometheus metrics on")
 	flag.BoolP("verbose", "v", false, "enable verbose output")
-	flag.BoolP("quiet", "q", false, "quiet output")
+	flag.BoolP("quiet", "q", false, "quiet output - only show ERROR and above")
 
 	flag.Parse()
 	viper.BindPFlags(flag.CommandLine)
-	logger = log.MustGetLogger(moduleName)
-	logger.Infof("Pleiades %s\n", version())
 
 	validateFlags()
+
+	logger = log.MustGetLogger(moduleName)
+	logger.Infof("Pleiades %s\n", version())
 
 	registerShutdownHook()
 
