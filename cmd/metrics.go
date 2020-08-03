@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -12,12 +14,14 @@ var metricsServer *http.Server
 
 func initMetrics() {
 	http.Handle("/metrics", promhttp.Handler())
-	metricsServer = &http.Server{Addr: ":9000"}
+	port := ":" + viper.GetString("metricsPort")
+	metricsServer = &http.Server{Addr: port}
 	logger.Debug("Starting metrics server")
 	go func() {
 		if err := metricsServer.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
-				logger.Errorf("Error from metrics server: %v", err)
+				logger.Fatalf("Error starting metrics server: %v", err)
+				panic(err)
 			}
 		}
 	}()

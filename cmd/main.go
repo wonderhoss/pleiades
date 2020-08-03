@@ -55,6 +55,7 @@ func main() {
 
 	//	flag.String("listenAddr", "0.0.0.0:8080", "address to listen on")
 	flag.Bool("help", false, "print this help and exit")
+	flag.String("metricsPort", "9000", "the port to serve Prometheus metrics on")
 	flag.BoolP("verbose", "v", false, "enable verbose output")
 	flag.BoolP("quiet", "q", false, "quiet output")
 
