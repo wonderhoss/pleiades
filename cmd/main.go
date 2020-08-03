@@ -50,6 +50,8 @@ func validateFlags() {
 
 func main() {
 
+	c = &consumer.Consumer{}
+
 	viper.SetEnvPrefix("PLEIADES")
 	viper.AutomaticEnv()
 
@@ -65,8 +67,6 @@ func main() {
 	logger.Infof("Pleiades %s\n", version())
 
 	validateFlags()
-
-	c = &consumer.Consumer{}
 
 	registerShutdownHook()
 

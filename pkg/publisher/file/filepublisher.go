@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
+
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher"
 	"github.com/gargath/pleiades/pkg/sse"
@@ -30,8 +33,13 @@ var (
 	logger = log.MustGetLogger(moduleName)
 )
 
+func init() {
+	flag.String("file.publishDir", "./events", "the directory to publish events to")
+}
+
 // NewPublisher returns a Publisher initialized with the source channel and destination path provided
-func NewPublisher(src <-chan *sse.Event, dest string) (publisher.Publisher, error) {
+func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
+	dest := viper.GetString("file.publishDir")
 	if src == nil {
 		return nil, ErrNilChan
 	}

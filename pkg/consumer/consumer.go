@@ -41,8 +41,7 @@ type Consumer struct {
 func (c *Consumer) Start() (string, error) {
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
-
-	f, err := file.NewPublisher(c.events, "./events")
+	f, err := file.NewPublisher(c.events)
 	if err != nil {
 		return lastEventID, err
 	}
