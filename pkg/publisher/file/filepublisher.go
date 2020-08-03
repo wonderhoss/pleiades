@@ -20,12 +20,13 @@ const moduleName = "filepublisher"
 var (
 	eventsPublished = promauto.NewCounter(
 		prometheus.CounterOpts{
-			Name: "pleiades_publish_events_total",
-			Help: "The total number of events published to filesystem"})
+			Name: "pleiades_file_publish_events_total",
+			Help: "The total number of events published to filesystem",
+		})
 
 	pubErrors = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "pleiades_publish_file_errors_total",
+			Name: "pleiades_file_publish_errors_total",
 			Help: "Total numbers of errors encountered while publishing to filesystem",
 		},
 		[]string{"type"})
@@ -34,6 +35,7 @@ var (
 )
 
 func init() {
+	flag.Bool("file.enable", false, "enable the file publisher")
 	flag.String("file.publishDir", "./events", "the directory to publish events to")
 }
 
@@ -94,7 +96,7 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 	}
 	err = ioutil.WriteFile(fmt.Sprintf("%s/event-%d.dat", f.destination, f.msgCount), d, 0644)
 	if err != nil {
-		pubErrors.WithLabelValues("file_write").Inc()
+		pubErrors.WithLabelValues("write").Inc()
 		return fmt.Errorf("error writing file: %v", err)
 	}
 	return nil

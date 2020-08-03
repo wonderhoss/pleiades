@@ -46,6 +46,19 @@ func validateFlags() {
 		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
 		os.Exit(0)
 	}
+	if !viper.GetBool("kafka.enable") && !viper.GetBool("file.enable") {
+		fmt.Fprintf(os.Stderr, "ERROR: no publisher enabled\n")
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
+		os.Exit(0)
+	}
+	if viper.GetBool("kafka.enable") && viper.GetBool("file.enable") {
+		fmt.Fprintf(os.Stderr, "ERROR: only one publisher can be enabled\n")
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
+		os.Exit(0)
+	}
+
 }
 
 func main() {
