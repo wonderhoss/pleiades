@@ -8,21 +8,43 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+
+	"github.com/gargath/pleiades/pkg/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var client = &http.Client{}
-var lastEventID string
+const moduleName = "sse"
+
+var (
+	client         = &http.Client{}
+	lastEventID    string
+	eventsReceived = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "pleiades_recv_events_total",
+			Help: "The total number of events received"})
+	linesReceived = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "pleiades_recv_event_lines_total",
+			Help: "Total numbers of lines read from server",
+		},
+		[]string{"type"})
+	recvErrors = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "pleiades_recv_errors_total",
+			Help: "Total numbers of errors encountered during events receive",
+		},
+		[]string{"type"})
+	logger = log.MustGetLogger(moduleName)
+)
 
 func liveReq(verb, uri string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(verb, uri, body)
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Accept", "text/event-stream")
-
 	return req, nil
 }
 
@@ -30,18 +52,23 @@ func parseLine(bs []byte, currEvent *Event) {
 	spl := bytes.SplitN(bs, delim, 2)
 	if len(spl) < 2 {
 		if spl[0][0] == 0x003A { // a colon (:) - means this is a comment in the stream
+			linesReceived.WithLabelValues("comment").Inc()
 			return
 		}
-		log.Printf("WARN: encountered non-SSE-compliant line in server response: %s", string(bs))
+		linesReceived.WithLabelValues("unknown").Inc()
+		logger.Warningf("WARN: encountered non-SSE-compliant line in server response: %s", string(bs))
 	}
 	switch string(spl[0]) {
 	case iName:
+		linesReceived.WithLabelValues("id").Inc()
 		e := string(bytes.TrimSpace(spl[1]))
 		currEvent.ID = e
 		lastEventID = e
 	case eName:
+		linesReceived.WithLabelValues("event").Inc()
 		currEvent.Type = string(bytes.TrimSpace(spl[1]))
 	case dName:
+		linesReceived.WithLabelValues("data").Inc()
 		if currEvent.data.Len() > 0 {
 			currEvent.data.WriteByte(byte(0x000A))
 		}
@@ -60,14 +87,17 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error
 
 	req, err := liveReq("GET", uri, nil)
 	if err != nil {
+		logger.Errorf("Error creating HTTP request: %v", err)
 		return lastEventID, fmt.Errorf("error getting sse request: %v", err)
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
+		logger.Errorf("Error performing HTTP request for %s: %v", uri, err)
 		return lastEventID, fmt.Errorf("error performing request for %s: %v", uri, err)
 	}
 	if res.StatusCode > 299 {
+		logger.Errorf("Server at %s responded %s", uri, res.StatusCode)
 		return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
 	}
 
@@ -86,11 +116,13 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error
 			bs, err := br.ReadBytes('\n')
 
 			if err != nil && err != io.EOF {
+				recvErrors.WithLabelValues("read_error").Inc()
 				return lastEventID, fmt.Errorf("error reading from response body: %v", err)
 			}
 
 			if len(bs) < 2 { //newline indicates end of event, emit this one, start populating a new one
 				if currEvent.ID != "" || currEvent.Type != "" || currEvent.data.Len() > 0 {
+					eventsReceived.Inc()
 					evCh <- currEvent
 					currEvent = &Event{URI: uri, data: new(bytes.Buffer)}
 				}
@@ -100,7 +132,8 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error
 			parseLine(bs, currEvent)
 
 			if err == io.EOF {
-				log.Printf("encountered EOF while reading server response - consumer terminating")
+				recvErrors.WithLabelValues("eof").Inc()
+				logger.Warning("encountered EOF while reading server response - consumer terminating")
 				return lastEventID, nil
 			}
 		}

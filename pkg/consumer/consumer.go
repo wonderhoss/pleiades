@@ -1,16 +1,31 @@
 package consumer
 
 import (
-	"log"
 	"sync"
 	"time"
 
+	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher/file"
 	"github.com/gargath/pleiades/pkg/spinner"
 	"github.com/gargath/pleiades/pkg/sse"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var lastEventID string
+const moduleName = "consumer"
+
+var (
+	lastEventID string
+
+	restarts = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "pleiades_goroutine_restarts",
+			Help: "Total numbers of restarts of component goroutines",
+		},
+		[]string{"component"})
+
+	logger = log.MustGetLogger(moduleName)
+)
 
 // Consumer ingests an SSE stream from WMF and processes each event in turn
 type Consumer struct {
@@ -33,7 +48,7 @@ func (c *Consumer) Start() (string, error) {
 	}
 
 	if !spinner.IsTTY() {
-		log.Printf("Terminal is not a TTY, not displaying progress indicator")
+		logger.Info("Terminal is not a TTY, not displaying progress indicator")
 	} else {
 		c.spinner = spinner.NewSpinner("Processing... ")
 		c.wg.Add(1)
@@ -54,21 +69,45 @@ func (c *Consumer) Start() (string, error) {
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", c.events, c.stop)
-		lastEventID = eid
-		if err != nil && err == sse.ErrNilChan {
-			log.Printf("Event consumer exited with error: %v", err)
+		for {
+			select {
+			case <-c.stop:
+				{
+					return
+				}
+			default:
+				{
+					eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", c.events, c.stop)
+					restarts.WithLabelValues("wmf_consumer").Inc()
+					lastEventID = eid
+					if err != nil && err == sse.ErrNilChan {
+						logger.Errorf("Event consumer exited with error: %v", err)
+					}
+				}
+			}
 		}
 	}()
 
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
-		count, err := f.ReadAndPublish()
-		if err != nil {
-			log.Printf("File Publisher exited with error after processing %d events: %s", count, err)
-		} else {
-			log.Printf("File Publisher finished after processing %d events\n", count)
+		for {
+			for {
+				select {
+				case <-c.stop:
+					{
+						return
+					}
+				default:
+					count, err := f.ReadAndPublish()
+					if err != nil {
+						logger.Errorf("File Publisher exited with error after processing %d events: %s", count, err)
+					} else {
+						logger.Infof("File Publisher finished after processing %d events\n", count)
+					}
+					restarts.WithLabelValues("file_publisher").Inc()
+				}
+			}
 		}
 	}()
 
