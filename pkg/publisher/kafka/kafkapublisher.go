@@ -66,7 +66,7 @@ func (f *Publisher) ReadAndPublish() (int64, error) {
 		Async:        true,
 	})
 	kc := PrometheusCollector{
-		Writer: f.w,
+		Publisher: f,
 	}
 	prometheus.DefaultRegisterer.MustRegister(kc)
 
@@ -100,5 +100,11 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 		pubErrors.WithLabelValues("write").Inc()
 		return fmt.Errorf("error writing to kafka: %v", err)
 	}
+	f.currMsgID = e.ID
 	return nil
+}
+
+// GetResumeID will try to get the latest message published to Kafka and extract a resume ID from it
+func (f *Publisher) GetResumeID() string {
+	return ""
 }

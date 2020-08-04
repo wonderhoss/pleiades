@@ -14,6 +14,7 @@ type Publisher struct {
 	source      <-chan *sse.Event
 	msgCount    int64
 	w           *kafka.Writer
+	currMsgID   string
 }
 
 // ConnectionOpts wrap the information needed to connect to kafka
