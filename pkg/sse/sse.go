@@ -80,7 +80,7 @@ func parseLine(bs []byte, currEvent *Event) {
 //down the channel when recieved, until the stream is closed. It will then
 //close the stream. This is blocking, and so you will likely want to call this
 //in a new goroutine (via `go Notify(..)`)
-func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error) {
+func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan bool) (string, error) {
 	if evCh == nil {
 		return lastEventID, ErrNilChan
 	}
@@ -89,6 +89,12 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error
 	if err != nil {
 		logger.Errorf("Error creating HTTP request: %v", err)
 		return lastEventID, fmt.Errorf("error getting sse request: %v", err)
+	}
+	if resumeID != "" {
+		logger.Infof("Requesting subscription to resume from %s", resumeID)
+		req.Header.Set("Last-Event-ID", resumeID)
+	} else {
+		logger.Info("Starting new subscription")
 	}
 
 	res, err := client.Do(req)

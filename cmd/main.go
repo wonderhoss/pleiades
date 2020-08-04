@@ -88,7 +88,7 @@ func main() {
 
 	initMetrics()
 
-	logger.Info("Starting to consume events")
+	logger.Info("Starting up...")
 	lastEventID, err := c.Start()
 	if err != nil {
 		logger.Errorf("Event consumer exited with error: %v", err)

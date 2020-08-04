@@ -44,29 +44,11 @@ type Consumer struct {
 // Start begins consumption of the SSE stream
 // If the current terminal is a TTY, it will output a progress spinner
 func (c *Consumer) Start() (string, error) {
+	logger.Debug("Consumer setting up...")
 	c.resume = viper.GetBool("resume")
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
 	var resumeID string
-
-	if !spinner.IsTTY() {
-		logger.Info("Terminal is not a TTY, not displaying progress indicator")
-	} else {
-		c.spinner = spinner.NewSpinner("Processing... ")
-		wgPub.Add(1)
-		go func() {
-			defer wgPub.Done()
-			for {
-				select {
-				case <-c.stop:
-					return
-				default:
-					c.spinner.Tick()
-					time.Sleep(100 * time.Millisecond)
-				}
-			}
-		}()
-	}
 
 	if viper.GetBool("file.enable") {
 		f, err := file.NewPublisher(c.events)
@@ -103,6 +85,7 @@ func (c *Consumer) Start() (string, error) {
 				}
 			}
 		}()
+		logger.Debug("file publisher is up")
 	}
 
 	if viper.GetBool("kafka.enable") {
@@ -141,6 +124,7 @@ func (c *Consumer) Start() (string, error) {
 				}
 			}
 		}()
+		logger.Debug("kafka publisher is up")
 	}
 
 	wgPub.Add(1)
@@ -154,7 +138,7 @@ func (c *Consumer) Start() (string, error) {
 				}
 			default:
 				{
-					eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", c.events, c.stop)
+					eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", resumeID, c.events, c.stop)
 					restarts.WithLabelValues("wmf_consumer").Inc()
 					lastEventID = eid
 					if err != nil {
@@ -164,6 +148,28 @@ func (c *Consumer) Start() (string, error) {
 			}
 		}
 	}()
+	logger.Debug("subscriber is up")
+
+	if !spinner.IsTTY() {
+		logger.Info("Terminal is not a TTY, not displaying progress indicator")
+	} else {
+		c.spinner = spinner.NewSpinner("Processing... ")
+		wgPub.Add(1)
+		go func() {
+			defer wgPub.Done()
+			for {
+				select {
+				case <-c.stop:
+					return
+				default:
+					c.spinner.Tick()
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}()
+	}
+	logger.Debug("spinner is up")
+	logger.Debug("...setup complete")
 
 	wgSub.Wait()
 	return lastEventID, nil

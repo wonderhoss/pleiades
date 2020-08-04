@@ -98,7 +98,7 @@ func tStampFromID(id string) (int64, error) {
 	if len(tokens) < 2 {
 		return 0, fmt.Errorf("'timestamp' string not found")
 	}
-	stampString := strings.Split(tokens[1], "},")[0]
+	stampString := strings.Split(tokens[1], "},")[0] //TODO: timestamp can appear at the end. In that case, there's no comma
 	stamp, err := strconv.ParseInt(stampString, 10, 64)
 	if err != nil {
 		return 0, err
