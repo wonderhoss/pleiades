@@ -35,6 +35,7 @@ var (
 // Consumer ingests an SSE stream from WMF and processes each event in turn
 type Consumer struct {
 	LastMsgID string
+	resume    bool
 	stop      chan (bool)
 	events    chan *sse.Event
 	spinner   *spinner.Spinner
@@ -43,8 +44,10 @@ type Consumer struct {
 // Start begins consumption of the SSE stream
 // If the current terminal is a TTY, it will output a progress spinner
 func (c *Consumer) Start() (string, error) {
+	c.resume = viper.GetBool("resume")
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
+	var resumeID string
 
 	if !spinner.IsTTY() {
 		logger.Info("Terminal is not a TTY, not displaying progress indicator")
@@ -60,6 +63,81 @@ func (c *Consumer) Start() (string, error) {
 				default:
 					c.spinner.Tick()
 					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}()
+	}
+
+	if viper.GetBool("file.enable") {
+		f, err := file.NewPublisher(c.events)
+		if err != nil {
+			return lastEventID, fmt.Errorf("Failed to initialize file publisher: %v", err)
+		}
+		if c.resume {
+			resumeID = f.GetResumeID()
+			if resumeID != "" {
+				logger.Infof("Resume Event ID found: %s", resumeID)
+			} else {
+				logger.Info("No resume ID found")
+			}
+		}
+		wgSub.Add(1)
+		go func() {
+			defer wgSub.Done()
+			for {
+				for {
+					select {
+					case <-c.stop:
+						{
+							return
+						}
+					default:
+						count, err := f.ReadAndPublish()
+						if err != nil {
+							logger.Errorf("File Publisher exited with error after processing %d events: %s", count, err)
+						} else {
+							logger.Infof("File Publisher finished after processing %d events\n", count)
+						}
+						restarts.WithLabelValues("file_publisher").Inc()
+					}
+				}
+			}
+		}()
+	}
+
+	if viper.GetBool("kafka.enable") {
+		k, err := kafka.NewPublisher(c.events)
+		if err != nil {
+			return lastEventID, fmt.Errorf("Failed to initialize kafka publisher: %v", err)
+		}
+		if c.resume {
+			resumeID = k.GetResumeID()
+			if resumeID != "" {
+				logger.Infof("Resume Event ID found: %s", resumeID)
+			} else {
+				logger.Info("No resume ID found")
+			}
+		}
+		wgSub.Add(1)
+		go func() {
+			defer wgSub.Done()
+			for {
+				for {
+					select {
+					case <-c.stop:
+						{
+							return
+						}
+					default:
+						count, err := k.ReadAndPublish()
+						logger.Debug("Kafka Publisher exited")
+						if err != nil {
+							logger.Errorf("Kafka Publisher exited with error after processing %d events: %s", count, err)
+						} else {
+							logger.Infof("Kafka Publisher finished after processing %d events\n", count)
+						}
+						restarts.WithLabelValues("kafka_publisher").Inc()
+					}
 				}
 			}
 		}()
@@ -86,66 +164,6 @@ func (c *Consumer) Start() (string, error) {
 			}
 		}
 	}()
-
-	if viper.GetBool("file.enable") {
-		f, err := file.NewPublisher(c.events)
-		if err != nil {
-			return lastEventID, fmt.Errorf("Failed to initialize file publisher: %v", err)
-		}
-		wgSub.Add(1)
-		go func() {
-			defer wgSub.Done()
-			for {
-				for {
-					select {
-					case <-c.stop:
-						{
-							return
-						}
-					default:
-						count, err := f.ReadAndPublish()
-						logger.Debug("File Publisher exited")
-						if err != nil {
-							logger.Errorf("File Publisher exited with error after processing %d events: %s", count, err)
-						} else {
-							logger.Infof("File Publisher finished after processing %d events\n", count)
-						}
-						restarts.WithLabelValues("file_publisher").Inc()
-					}
-				}
-			}
-		}()
-	}
-
-	if viper.GetBool("kafka.enable") {
-		k, err := kafka.NewPublisher(c.events)
-		if err != nil {
-			return lastEventID, fmt.Errorf("Failed to initialize kafka publisher: %v", err)
-		}
-		wgSub.Add(1)
-		go func() {
-			defer wgSub.Done()
-			for {
-				for {
-					select {
-					case <-c.stop:
-						{
-							return
-						}
-					default:
-						count, err := k.ReadAndPublish()
-						logger.Debug("Kafka Publisher exited")
-						if err != nil {
-							logger.Errorf("Kafka Publisher exited with error after processing %d events: %s", count, err)
-						} else {
-							logger.Infof("Kafka Publisher finished after processing %d events\n", count)
-						}
-						restarts.WithLabelValues("kafka_publisher").Inc()
-					}
-				}
-			}
-		}()
-	}
 
 	wgSub.Wait()
 	return lastEventID, nil

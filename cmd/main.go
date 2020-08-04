@@ -73,6 +73,7 @@ func main() {
 	flag.String("metricsPort", "9000", "the port to serve Prometheus metrics on")
 	flag.BoolP("verbose", "v", false, "enable verbose output")
 	flag.BoolP("quiet", "q", false, "quiet output - only show ERROR and above")
+	flag.BoolP("resume", "r", true, "try to resume from last seen event ID")
 
 	flag.Parse()
 	viper.BindPFlags(flag.CommandLine)
@@ -80,6 +81,7 @@ func main() {
 	validateFlags()
 
 	logger = log.MustGetLogger(moduleName)
+	log.InitLogLevel()
 	logger.Infof("Pleiades %s\n", version())
 
 	registerShutdownHook()

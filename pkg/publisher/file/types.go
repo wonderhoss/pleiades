@@ -11,6 +11,7 @@ type Publisher struct {
 	destination string
 	source      <-chan *sse.Event
 	msgCount    int64
+	prefix      string
 }
 
 // ErrNoDest indicates that the FilePublisher has no destination path

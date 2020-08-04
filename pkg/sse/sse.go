@@ -111,7 +111,7 @@ func Notify(uri string, evCh chan<- *Event, stopChan <-chan bool) (string, error
 	for {
 		select {
 		case <-stopChan:
-			logger.Debug("Found stop channel closed. exiting")
+			logger.Debug("SSE consumer stopped")
 			return lastEventID, nil
 		default:
 			bs, err := br.ReadBytes('\n')
