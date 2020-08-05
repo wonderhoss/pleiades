@@ -2,7 +2,7 @@
 
 * _Note: Pleiades is a demonstration project, provided as-is_
 
-<img align="left" width="" height="" src="https://raw.githubusercontent.com/gargath/pleiades/readme/pleiades_logo.png" alt="Pleiades Logo">
+<img align="left" width="" height="" src="https://raw.githubusercontent.com/gargath/pleiades/mainline/pleiades_logo.png" alt="Pleiades Logo">
 Pleiades subscribes to the `recentchange` event stream [provided by the Wikimedia Foundation](https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams) and re-publishes each event
 received to either a Kafka topic or a separate file on the filesystem.
 
