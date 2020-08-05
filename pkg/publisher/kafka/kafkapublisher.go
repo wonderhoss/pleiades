@@ -38,7 +38,7 @@ func init() {
 
 // NewPublisher returns a Publisher initialized with the source channel and kafka destination provided
 func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
-	dest := viper.GetString("kafka.broker")
+	dest := viper.GetString("kafka.broker") // TODO: Remove viper references and use config struct instead
 	topic := viper.GetString("kafka.topic")
 	if src == nil {
 		return nil, ErrNilChan
@@ -51,15 +51,7 @@ func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
 		source:      src,
 		destination: o,
 	}
-	return f, nil
-}
 
-// ReadAndPublish will read Events from the input channel and write them to the kafka topic
-// configured for this Publisher.
-//
-// Calling ReadAndPublish() will reset the processed message counter of the underlying Publisher and
-// returns the value of the counter when the Publisher's source channel is closed
-func (f *Publisher) ReadAndPublish() (int64, error) {
 	f.w = kafka.NewWriter(kafka.WriterConfig{
 		Brokers:      f.destination.Brokers,
 		Topic:        f.destination.Topic,
@@ -71,6 +63,16 @@ func (f *Publisher) ReadAndPublish() (int64, error) {
 		Publisher: f,
 	}
 	prometheus.DefaultRegisterer.MustRegister(kc)
+
+	return f, nil
+}
+
+// ReadAndPublish will read Events from the input channel and write them to the kafka topic
+// configured for this Publisher.
+//
+// Calling ReadAndPublish() will reset the processed message counter of the underlying Publisher and
+// returns the value of the counter when the Publisher's source channel is closed
+func (f *Publisher) ReadAndPublish() (int64, error) {
 
 	logger.Debug("Kafka publisher starting to process events")
 	f.msgCount = 0
@@ -108,67 +110,49 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 
 // GetResumeID will try to get the latest message published to Kafka and extract a resume ID from it
 func (f *Publisher) GetResumeID() string {
+	logger.Infof("Trying to retrieve resumable event ID from kafka")
 	co1, cancel1 := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel1()
 
 	c, err := kafka.DialLeader(co1, "tcp", f.destination.Brokers[0], f.destination.Topic, 0)
 
 	if err != nil {
-		logger.Errorf("error connecting to leader: %v", err)
+		logger.Errorf("Error connecting to leader for partition [0]: %v", err)
 		return ""
 	}
-
-	first, last, err := c.ReadOffsets()
-	if err != nil {
-		logger.Errorf("error reading offsets: %v", err)
-		return ""
-	}
-	logger.Debugf("Offsets found: first %d - last %d", first, last)
-
-	l2, err := c.ReadLastOffset()
-	if err != nil {
-		logger.Debugf("error getting last offset: %v", err)
-	}
-	logger.Debug("Last Offset found: %d", l2)
 
 	parts, err := c.ReadPartitions()
 	if err != nil {
-		logger.Errorf("error reading partitions: %v", err)
+		logger.Errorf("Error reading partitions: %v", err)
 	}
 	for _, p := range parts {
 		logger.Debugf("Found partition: %+v", p)
 	}
 
-	cl := &crudLogger{}
+	// TODO: dial leader for every partition and read latest offset from each, then compare messages to find truly freshest
+
+	l2, err := c.ReadLastOffset()
+	if err != nil {
+		logger.Debugf("Error getting last offset: %v", err)
+	}
+	logger.Debugf("Last Offset found: %d", l2)
+
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     f.destination.Brokers,
 		Topic:       f.destination.Topic,
-		StartOffset: kafka.LastOffset,
-		Logger:      cl,
+		ErrorLogger: &crudErrorLogger{},
+		Logger:      newCrudLogger(),
 	})
-	// err = r.SetOffset(last - 2)
-	// if err != nil {
-	// 	logger.Errorf("error setting read offset: %v", err)
-	// 	return ""
-	// }
-	// logger.Debugf("Read offset is now: %v", r.Offset())
 
-	r.SetOffset(r.Offset() - 1)
+	r.SetOffset(l2 - 1)
 
-	co, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	co, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	msg, err := r.ReadMessage(co)
 	if err != nil {
-		logger.Errorf("error reading latest message: %v", err)
+		logger.Errorf("Error reading latest message: %v", err)
 		return ""
 	}
 	key := string(msg.Key)
 	return key
-}
-
-type crudLogger struct {
-}
-
-func (c *crudLogger) Printf(s string, p ...interface{}) {
-	kafkaLogger.Debugf(s, p...)
 }
