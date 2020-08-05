@@ -2,7 +2,7 @@
 
 * _Note: Pleiades is a demonstration project, provided as-is_
 
-Pleiades subscribes to the `recentchanges` event stream provided by the Wikimedia foundation and re-publishes each event
+Pleiades subscribes to the `recentchange` event stream [provided by the Wikimedia Foundation](https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams) and re-publishes each event
 received to either a Kafka topic or a separate file on the filesystem.
 
 It supports resuming subscriptions from historic event IDs in case of interruption.
@@ -42,15 +42,15 @@ Pleiades exposes the following metrics in addition to the standard go runtime st
 
 | name | type | help |
 |------|------|------|
-| pleiades_recv_events_total | counter | Total number of parsed events recenved from upstream |
-| pleiades_recv_event_lines_total | counter | Total number of raw lines read from upstream, regardless of whether they become part of an event object |
-| pleiades_recv_errors_total | counter | Total number of errors encountered by the consumer |
-| pleiades_goroutine_restarts | counter | Number of times any of the interal goroutines restarted after encountering an error |
-| pleiades_file_publish_events_total | counter | Total number of events written to file by the filesystem publisher |
-| pleiades_file_publish_errors_total | counter | Total number of errors encountered while writing to filesystem - each is likely to have dropped one event |
-| pleiades_kafka_publish_events_total | counter | Total number of events published to Kafka |
-| pleiades_kafka_publish_writes_total | counter | Total number of write operations published to Kafka |
-| pleiades_kafka_writer_errors_total | counter | Total number of errors encountered while publishing to Kafka - each is likely to have dropped one event |
-| pleiades_kafka_publish_write_time_seconds | gauge | Time spent writing to Kafka ('min', 'max', 'avg') |
-| pleiades_kafka_publish_wait_time_seconds | gauge | Time spent waiting for Kafka responses ('min', 'max', 'avg') |
-| pleiades_kafka_publish_lag_milliseconds | gauge | Time difference between receiving an event from upstream and publishing to Kafka |
+| `pleiades_recv_events_total` | counter | Total number of parsed events recenved from upstream |
+| `pleiades_recv_event_lines_total` | counter | Total number of raw lines read from upstream, regardless of whether they become part of an event object |
+| `pleiades_recv_errors_total` | counter | Total number of errors encountered by the consumer |
+| `pleiades_goroutine_restarts` | counter | Number of times any of the interal goroutines restarted after encountering an error |
+| `pleiades_file_publish_events_total` | counter | Total number of events written to file by the filesystem publisher |
+| `pleiades_file_publish_errors_total` | counter | Total number of errors encountered while writing to filesystem - each is likely to have dropped one event |
+| `pleiades_kafka_publish_events_total` | counter | Total number of events published to Kafka |
+| `pleiades_kafka_publish_writes_total` | counter | Total number of write operations published to Kafka |
+| `pleiades_kafka_writer_errors_total` | counter | Total number of errors encountered while publishing to Kafka - each is likely to have dropped one event |
+| `pleiades_kafka_publish_write_time_seconds` | gauge | Time spent writing to Kafka ('min', 'max', 'avg') |
+| `pleiades_kafka_publish_wait_time_seconds` | gauge | Time spent waiting for Kafka responses ('min', 'max', 'avg') |
+| `pleiades_kafka_publish_lag_milliseconds` | gauge | Time difference between receiving an event from upstream and publishing to Kafka |
