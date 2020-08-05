@@ -37,7 +37,7 @@ Usage of pleiades:
 * Setting `-r=false` will disable the subscription resume mechanism and start consuming events from the current point in time
 
 
-## Metrics
+## Metrics
 
 Pleiades exposes the following metrics in addition to the standard go runtime stats:
 
