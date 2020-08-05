@@ -27,9 +27,13 @@ var responseLines = []string{
 var _ = Describe("SSE Consumer", func() {
 
 	var server *httptest.Server
+	var resumed bool
 
 	BeforeEach(func() {
 		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Last-Event-ID") != "" {
+				resumed = true
+			}
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.WriteHeader(200)
 			for _, l := range responseLines {
@@ -42,6 +46,7 @@ var _ = Describe("SSE Consumer", func() {
 	})
 
 	AfterEach(func() {
+		resumed = false
 		server.Close()
 	})
 
@@ -63,12 +68,44 @@ var _ = Describe("SSE Consumer", func() {
 			time.Sleep(2 * time.Second)
 			close(clChan)
 		}()
-		eid, err := Notify(server.URL, evChan, clChan)
+		eid, err := Notify(server.URL, "", evChan, clChan)
 		close(evChan)
 		wg.Wait()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(eid).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
 		Expect(len(events)).Should(Equal(2))
+		Expect(resumed).Should(BeFalse())
+		Expect(events[0].Type).Should(Equal("message"))
+		Expect(events[1].Type).Should(Equal("message"))
+		Expect(events[0].ID).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
+		Expect(events[1].ID).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
+	})
+
+	It("resumes when requested", func() {
+		evChan := make(chan *Event)
+		clChan := make(chan bool)
+		var wg sync.WaitGroup
+		events := []Event{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for e := range evChan {
+				events = append(events, *e)
+			}
+		}()
+		wg.Add(1)
+		go func() { // TODO: This is a bit of a hack. The consumer should terminate naturally when the server connection closes. For some reason, it does not.
+			defer wg.Done()
+			time.Sleep(2 * time.Second)
+			close(clChan)
+		}()
+		eid, err := Notify(server.URL, "some-event-id", evChan, clChan)
+		close(evChan)
+		wg.Wait()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(eid).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
+		Expect(len(events)).Should(Equal(2))
+		Expect(resumed).Should(BeTrue())
 		Expect(events[0].Type).Should(Equal("message"))
 		Expect(events[1].Type).Should(Equal("message"))
 		Expect(events[0].ID).Should(Equal(`[{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1596207527001},{"topic":"codfw.mediawiki.recentchange","partition":0,"offset":-1}]`))
@@ -92,7 +129,7 @@ var _ = Describe("SSE Consumer", func() {
 					events = append(events, *e)
 				}
 			}()
-			_, err := Notify(server.URL, evChan, clChan)
+			_, err := Notify(server.URL, "", evChan, clChan)
 			close(evChan)
 			wg.Wait()
 			Expect(err).To(HaveOccurred())
@@ -117,7 +154,7 @@ var _ = Describe("SSE Consumer", func() {
 					events = append(events, *e)
 				}
 			}()
-			_, err := Notify(server.URL, evChan, clChan)
+			_, err := Notify(server.URL, "", evChan, clChan)
 			close(evChan)
 			wg.Wait()
 			Expect(err).To(HaveOccurred())

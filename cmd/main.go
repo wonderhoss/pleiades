@@ -46,6 +46,19 @@ func validateFlags() {
 		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
 		os.Exit(0)
 	}
+	if !viper.GetBool("kafka.enable") && !viper.GetBool("file.enable") {
+		fmt.Fprintf(os.Stderr, "ERROR: no publisher enabled\n")
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
+		os.Exit(0)
+	}
+	if viper.GetBool("kafka.enable") && viper.GetBool("file.enable") {
+		fmt.Fprintf(os.Stderr, "ERROR: only one publisher can be enabled\n")
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
+		os.Exit(0)
+	}
+
 }
 
 func main() {
@@ -60,6 +73,7 @@ func main() {
 	flag.String("metricsPort", "9000", "the port to serve Prometheus metrics on")
 	flag.BoolP("verbose", "v", false, "enable verbose output")
 	flag.BoolP("quiet", "q", false, "quiet output - only show ERROR and above")
+	flag.BoolP("resume", "r", true, "try to resume from last seen event ID")
 
 	flag.Parse()
 	viper.BindPFlags(flag.CommandLine)
@@ -67,13 +81,14 @@ func main() {
 	validateFlags()
 
 	logger = log.MustGetLogger(moduleName)
+	log.InitLogLevel()
 	logger.Infof("Pleiades %s\n", version())
 
 	registerShutdownHook()
 
 	initMetrics()
 
-	logger.Info("Starting to consume events")
+	logger.Info("Starting up...")
 	lastEventID, err := c.Start()
 	if err != nil {
 		logger.Errorf("Event consumer exited with error: %v", err)

@@ -1,21 +1,27 @@
-package file
+package kafka
 
 import (
 	"fmt"
+
+	kafka "github.com/segmentio/kafka-go"
 
 	"github.com/gargath/pleiades/pkg/sse"
 )
 
 // Publisher reads Events and writes them to disk
 type Publisher struct {
-	destination string
+	destination *ConnectionOpts
 	source      <-chan *sse.Event
 	msgCount    int64
-	prefix      string
+	w           *kafka.Writer
+	currMsgID   string
 }
 
-// ErrNoDest indicates that the FilePublisher has no destination path
-var ErrNoDest error = fmt.Errorf("No destination path set")
+// ConnectionOpts wrap the information needed to connect to kafka
+type ConnectionOpts struct {
+	Brokers []string
+	Topic   string
+}
 
 // ErrNilChan indicates that the FilePublisher has no source channel
 var ErrNilChan error = fmt.Errorf("Source channel is nil")
