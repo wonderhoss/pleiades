@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pleiades
+  namespace: kafka
+  labels:
+    app: pleiades
+spec:
+  selector:
+    matchLabels:
+      app: pleiades
+      component: pleiades
+  endpoints:
+  - port: metrics

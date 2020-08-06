@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pleiades
+  namespace: kafka
+spec:
+  selector:
+    matchLabels:
+      app: pleiades
+      component: pleiades
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: pleiades
+        component: pleiades
+    spec:
+      containers:
+      - name: pleiades
+        image: pleiades:v0.1
+        args:
+        - -v
+        - --kafka.enable
+        - --kafka.broker=my-cluster-kafka-bootstrap:9092
+        imagePullPolicy: Never
