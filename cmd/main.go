@@ -2,17 +2,16 @@ package main
 
 import (
 	"fmt"
-	"strings"
+	"os"
 
 	//"log"
-
-	"os"
 
 	"github.com/op/go-logging"
 
 	"github.com/spf13/cobra"
 
 	"github.com/gargath/pleiades/pkg/coordinator"
+	"github.com/gargath/pleiades/pkg/log"
 )
 
 const moduleName = "main"
@@ -25,26 +24,26 @@ var (
 )
 
 func main() {
-	var cmdEcho = &cobra.Command{
-		Use:   "echo [string to echo]",
-		Short: "Echo anything to the screen",
-		Long: `echo is for echoing anything back.
-	Echo works a lot like print, except it has a child command.`,
-		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Echo: " + strings.Join(args, " "))
+	var rootCmd = &cobra.Command{
+		Use: "pleiades",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if verbose && quiet {
+				return fmt.Errorf(" -quiet and -verbose are mutually exclusive")
+			}
+			return nil
 		},
 	}
-	var rootCmd = &cobra.Command{Use: "pleiades"}
 
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress all output except for errors")
 
-	rootCmd.AddCommand(cmdEcho)
 	rootCmd.AddCommand(cmdIngest)
+
+	logger = log.MustGetLogger(moduleName)
+	logger.Infof("Pleiades %s\n", version())
+
 	err := rootCmd.Execute()
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(55)
+		os.Exit(1)
 	}
 }

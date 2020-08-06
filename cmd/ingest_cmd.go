@@ -40,11 +40,13 @@ func init() {
 
 func startIngest(cmd *cobra.Command, args []string) error {
 
-	if verbose && quiet {
-		return fmt.Errorf(" -quiet and -verbose are mutually exclusive")
+	if fileOn && kafkaOn {
+		return fmt.Errorf("Can only specify either --file.enable or --kafka.enable")
+
+	} else if !fileOn && !kafkaOn {
+		return fmt.Errorf("No publisher specified")
 	}
 
-	logger = log.MustGetLogger(moduleName)
 	if verbose {
 		log.InitLogLevel(log.VERBOSE)
 	} else if quiet {
@@ -52,17 +54,10 @@ func startIngest(cmd *cobra.Command, args []string) error {
 	} else {
 		log.InitLogLevel(log.DEFAULT)
 	}
-	logger.Infof("Pleiades %s\n", version())
+	logger.Info("Ingest starting up...")
 
 	c = &coordinator.Coordinator{
 		Resume: resume,
-	}
-
-	if fileOn && kafkaOn {
-		return fmt.Errorf("Can only specify either --file.enable or --kafka.enable")
-
-	} else if !fileOn && !kafkaOn {
-		return fmt.Errorf("No publisher specified")
 	}
 
 	if fileOn {
@@ -81,13 +76,12 @@ func startIngest(cmd *cobra.Command, args []string) error {
 
 	initMetrics(metricsPort)
 
-	logger.Info("Starting up...")
 	lastEventID, err := c.Start()
 	if err != nil {
-		return fmt.Errorf("Event consumer exited with error: %v", err)
+		return err
 	}
 	stopMetrics()
-	logger.Info("Shutdown complete")
+	logger.Info("Ingest shutdown complete")
 	logger.Infof("Last seen Event ID: %s", lastEventID)
 	return nil
 }
