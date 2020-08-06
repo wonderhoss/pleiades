@@ -7,8 +7,6 @@ import (
 	"os"
 
 	uuid "github.com/satori/go.uuid"
-	flag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
 
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher"
@@ -36,14 +34,9 @@ var (
 	logger = log.MustGetLogger(moduleName)
 )
 
-func init() {
-	flag.Bool("file.enable", false, "enable the file publisher")
-	flag.String("file.publishDir", "./events", "the directory to publish events to")
-}
-
 // NewPublisher returns a Publisher initialized with the source channel and destination path provided
-func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
-	dest := viper.GetString("file.publishDir")
+func NewPublisher(opts *Opts, src <-chan *sse.Event) (publisher.Publisher, error) {
+	dest := opts.Destination
 	if src == nil {
 		return nil, ErrNilChan
 	}

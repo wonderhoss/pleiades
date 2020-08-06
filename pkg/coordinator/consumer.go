@@ -12,7 +12,6 @@ import (
 	"github.com/gargath/pleiades/pkg/sse"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/spf13/viper"
 )
 
 const moduleName = "coordinator"
@@ -32,30 +31,20 @@ var (
 	logger = log.MustGetLogger(moduleName)
 )
 
-// Coordinator ingests an SSE stream from WMF and processes each event in turn
-type Coordinator struct {
-	LastMsgID string
-	resume    bool
-	stop      chan (bool)
-	events    chan *sse.Event
-	spinner   *spinner.Spinner
-}
-
 // Start begins consumption of the SSE stream
 // If the current terminal is a TTY, it will output a progress spinner
 func (c *Coordinator) Start() (string, error) {
 	logger.Debug("Coordinator setting up...")
-	c.resume = viper.GetBool("resume")
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
 	var resumeID string
 
-	if viper.GetBool("file.enable") {
-		f, err := file.NewPublisher(c.events)
+	if c.File != nil {
+		f, err := file.NewPublisher(c.File, c.events)
 		if err != nil {
 			return lastEventID, fmt.Errorf("Failed to initialize file publisher: %v", err)
 		}
-		if c.resume {
+		if c.Resume {
 			resumeID = f.GetResumeID()
 			if resumeID != "" {
 				logger.Infof("Resume Event ID found: %s", resumeID)
@@ -88,8 +77,8 @@ func (c *Coordinator) Start() (string, error) {
 		logger.Debug("file publisher is up")
 	}
 
-	if viper.GetBool("kafka.enable") {
-		k, err := kafka.NewPublisher(c.events)
+	if c.Kafka != nil {
+		k, err := kafka.NewPublisher(c.Kafka, c.events)
 		if err != nil {
 			return lastEventID, fmt.Errorf("Failed to initialize kafka publisher: %v", err)
 		}
@@ -97,7 +86,7 @@ func (c *Coordinator) Start() (string, error) {
 		if err != nil {
 			return lastEventID, fmt.Errorf("Failed to validate kafka connection: %v", err)
 		}
-		if c.resume {
+		if c.Resume {
 			resumeID = k.GetResumeID()
 			if resumeID != "" {
 				logger.Infof("Resume Event ID found: %s", resumeID)
@@ -173,8 +162,8 @@ func (c *Coordinator) Start() (string, error) {
 				}
 			}
 		}()
+		logger.Debug("spinner is up")
 	}
-	logger.Debug("spinner is up")
 	logger.Debug("...setup complete")
 
 	wgSub.Wait()

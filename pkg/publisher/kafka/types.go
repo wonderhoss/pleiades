@@ -17,6 +17,12 @@ type Publisher struct {
 	currMsgID   string
 }
 
+// Opts hold configuration for the kafka publisheru
+type Opts struct {
+	Broker string
+	Topic  string
+}
+
 // ConnectionOpts wrap the information needed to connect to kafka
 type ConnectionOpts struct {
 	Brokers []string
