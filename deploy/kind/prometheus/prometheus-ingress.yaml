@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: prom-ingress
+  namespace: kafka
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /prometheus(/|$)(.*)
+        backend:
+          serviceName: prometheus-operated
+          servicePort: 9090
