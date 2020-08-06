@@ -67,6 +67,27 @@ func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
 	return f, nil
 }
 
+// ValidateConnection tests the connection to Kafka using the details given when creating the Publisher
+func (f *Publisher) ValidateConnection() error {
+	logger.Debug("Testing kafka connection")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := kafka.DialLeader(ctx, "tcp", f.destination.Brokers[0], f.destination.Topic, 0)
+	if err != nil {
+		return fmt.Errorf("Error connecting to leader for partition [0]: %v", err)
+	}
+	vs, err := conn.ApiVersions()
+	if err != nil {
+		return fmt.Errorf("Error retrieving api versions: %v", err)
+	}
+	logger.Debugf("Supported Kafka API versions")
+	for _, ve := range vs {
+		logger.Debugf("API version: %d; min: %d, max: %d", ve.ApiKey, ve.MinVersion, ve.MaxVersion)
+	}
+	return nil
+}
+
 // ReadAndPublish will read Events from the input channel and write them to the kafka topic
 // configured for this Publisher.
 //

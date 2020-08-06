@@ -12,14 +12,14 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/gargath/pleiades/pkg/consumer"
+	"github.com/gargath/pleiades/pkg/coordinator"
 	"github.com/gargath/pleiades/pkg/log"
 )
 
 const moduleName = "main"
 
 var (
-	c      *consumer.Consumer
+	c      *coordinator.Coordinator
 	logger *logging.Logger
 )
 
@@ -63,7 +63,7 @@ func validateFlags() {
 
 func main() {
 
-	c = &consumer.Consumer{}
+	c = &coordinator.Coordinator{}
 
 	viper.SetEnvPrefix("PLEIADES")
 	viper.AutomaticEnv()

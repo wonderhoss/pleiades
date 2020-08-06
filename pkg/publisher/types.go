@@ -7,4 +7,5 @@ type Publisher interface {
 	ReadAndPublish() (int64, error)
 	ProcessEvent(*sse.Event) error
 	GetResumeID() string
+	ValidateConnection() error
 }
