@@ -30,6 +30,13 @@ func main() {
 			if verbose && quiet {
 				return fmt.Errorf(" -quiet and -verbose are mutually exclusive")
 			}
+			if verbose {
+				log.InitLogLevel(log.VERBOSE)
+			} else if quiet {
+				log.InitLogLevel(log.QUIET)
+			} else {
+				log.InitLogLevel(log.DEFAULT)
+			}
 			return nil
 		},
 	}
@@ -38,6 +45,7 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress all output except for errors")
 
 	rootCmd.AddCommand(cmdIngest)
+	rootCmd.AddCommand(cmdAgg)
 
 	logger = log.MustGetLogger(moduleName)
 	logger.Infof("Pleiades %s\n", version())

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gargath/pleiades/pkg/coordinator"
-	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher/file"
 	"github.com/gargath/pleiades/pkg/publisher/kafka"
 	"github.com/spf13/cobra"
@@ -47,14 +46,7 @@ func startIngest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No publisher specified")
 	}
 
-	if verbose {
-		log.InitLogLevel(log.VERBOSE)
-	} else if quiet {
-		log.InitLogLevel(log.QUIET)
-	} else {
-		log.InitLogLevel(log.DEFAULT)
-	}
-	logger.Info("Ingest starting up...")
+	logger.Info("Ingest server starting...")
 
 	c = &coordinator.Coordinator{
 		Resume: resume,
