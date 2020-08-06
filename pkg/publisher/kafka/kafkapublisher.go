@@ -132,7 +132,7 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 // GetResumeID will try to get the latest message published to Kafka and extract a resume ID from it
 func (f *Publisher) GetResumeID() string {
 	logger.Infof("Trying to retrieve resumable event ID from kafka")
-	co1, cancel1 := context.WithTimeout(context.Background(), 15*time.Second)
+	co1, cancel1 := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel1()
 
 	c, err := kafka.DialLeader(co1, "tcp", f.destination.Brokers[0], f.destination.Topic, 0)
@@ -175,5 +175,6 @@ func (f *Publisher) GetResumeID() string {
 		return ""
 	}
 	key := string(msg.Key)
+	r.Close()
 	return key
 }

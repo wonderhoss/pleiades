@@ -134,6 +134,7 @@ func (c *Coordinator) Start() (string, error) {
 	wgPub.Add(1)
 	go func() {
 		defer wgPub.Done()
+		var eid = resumeID
 		for {
 			select {
 			case <-c.stop:
@@ -142,7 +143,8 @@ func (c *Coordinator) Start() (string, error) {
 				}
 			default:
 				{
-					eid, err := sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", resumeID, c.events, c.stop)
+					var err error
+					eid, err = sse.Notify("https://stream.wikimedia.org/v2/stream/recentchange", eid, c.events, c.stop)
 					restarts.WithLabelValues("wmf_consumer").Inc()
 					lastEventID = eid
 					if err != nil {
