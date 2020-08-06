@@ -70,6 +70,11 @@ func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
 	return f, nil
 }
 
+// ValidateConnection always returns nil and only serves to satisfy the Publisher interface
+func (f *Publisher) ValidateConnection() error {
+	return nil
+}
+
 // ReadAndPublish will read Events from the input channel and write them to file
 // File names are sequential and relative to the destination directory
 // If the FilePublisher's destionation directory is not set, ReadAndPublish returns ErrNoDest

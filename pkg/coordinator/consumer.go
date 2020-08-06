@@ -1,4 +1,4 @@
-package consumer
+package coordinator
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const moduleName = "consumer"
+const moduleName = "coordinator"
 
 var (
 	lastEventID string
@@ -32,8 +32,8 @@ var (
 	logger = log.MustGetLogger(moduleName)
 )
 
-// Consumer ingests an SSE stream from WMF and processes each event in turn
-type Consumer struct {
+// Coordinator ingests an SSE stream from WMF and processes each event in turn
+type Coordinator struct {
 	LastMsgID string
 	resume    bool
 	stop      chan (bool)
@@ -43,8 +43,8 @@ type Consumer struct {
 
 // Start begins consumption of the SSE stream
 // If the current terminal is a TTY, it will output a progress spinner
-func (c *Consumer) Start() (string, error) {
-	logger.Debug("Consumer setting up...")
+func (c *Coordinator) Start() (string, error) {
+	logger.Debug("Coordinator setting up...")
 	c.resume = viper.GetBool("resume")
 	c.stop = make(chan (bool))
 	c.events = make(chan (*sse.Event))
@@ -92,6 +92,10 @@ func (c *Consumer) Start() (string, error) {
 		k, err := kafka.NewPublisher(c.events)
 		if err != nil {
 			return lastEventID, fmt.Errorf("Failed to initialize kafka publisher: %v", err)
+		}
+		err = k.ValidateConnection()
+		if err != nil {
+			return lastEventID, fmt.Errorf("Failed to validate kafka connection: %v", err)
 		}
 		if c.resume {
 			resumeID = k.GetResumeID()
@@ -175,9 +179,9 @@ func (c *Consumer) Start() (string, error) {
 	return lastEventID, nil
 }
 
-// Stop will stop the consumer, close the connection and request all goroutines to exit
+// Stop will stop the coordinator, close the connection and request all goroutines to exit
 // It blocks until shutdown is complete
-func (c *Consumer) Stop() {
+func (c *Coordinator) Stop() {
 	close(c.stop)
 	wgPub.Wait()
 	close(c.events)
