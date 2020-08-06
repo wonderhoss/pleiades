@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: pleiades
+  namespace: kafka
+  labels:
+    app: pleiades
+    component: pleiades
+spec:
+  selector:
+    app: pleiades
+    component: pleiades
+  ports:
+  - name: metrics
+    port: 9000

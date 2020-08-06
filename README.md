@@ -55,3 +55,51 @@ Pleiades exposes the following metrics in addition to the standard go runtime st
 | `pleiades_kafka_publish_write_time_seconds` | gauge | Time spent writing to Kafka ('min', 'max', 'avg') |
 | `pleiades_kafka_publish_wait_time_seconds` | gauge | Time spent waiting for Kafka responses ('min', 'max', 'avg') |
 | `pleiades_kafka_publish_lag_milliseconds` | gauge | Time difference between receiving an event from upstream and publishing to Kafka |
+
+## Running in KIND
+
+[Kind](https://kind.sigs.k8s.io/) (or kubernetes-in-docker) is a tool for standing up kubernetes clusters on your local machine for testing purposes.
+
+The `/deploy/kind` folder contains all relevant descriptors:
+
+* [kind-cluster.yaml](deploy/kind/kind-cluster.yaml) is a  Kind cluster descriptor including host port forwarding for ports `80` and `443` for use with an Ingress Controller
+* [strimzi/strimzi.yaml](deploy/kind/strimzi/strimzi.yaml) deploys the [Strimzi Kafka Operator](https://strimzi.io/)
+* [prometheus/](deploy/kind/prometheus) contains descriptors for the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator), an Ingress and a single Prometheus instance
+* [nginx-ingress/](deploy/kind/nginx-ingress/nginx-ingress.yaml) deploys the [Nginx Ingress Controller](https://github.com/kubernetes/ingress-nginx/)
+* [pleiades/](deploy/kind/pleiades) contains descriptors for Pleiades itself, the managed Kafka cluster and topic it publishes to, as well as a `ServiceMonitor`
+
+### Putting it all together
+
+First, create the Kind cluster
+```
+$ pwd
+pleiades/deploy/kind
+
+$ kind create cluster --config=kind-cluster.yaml
+
+$ kubectl config use-context kind-kind
+```
+
+Deploy the Ingress Controller
+```
+$ kubectl apply -f nginx-ingress/nginx-ingress.yaml
+```
+and wait for the pods to become ready.
+
+Next, deploy the Strimzi and Prometheus operators
+```
+$ kubectl apply -f strimzi/strimzi.yaml
+$ kubectl apply -f prometheus/*
+```
+
+Again wait for Pods to become ready before deploying the Kafka resources
+```
+$ kubectl apply -f pleiades/kafka-persistent-single.yaml -f kafkatopic.yaml
+```
+
+Once Kafka is running (again, check Pod readiness), deploy Pleiades
+```
+$ kubectl apply -f pleiades/pleiades-*
+```
+
+You should be able to access Prometheus on http://localhost/prometheus and verify that it is scraping Pleiades by checking the `Targets` section.
