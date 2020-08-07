@@ -58,3 +58,6 @@ spec:
   serviceMonitorSelector:
     matchLabels:
       app: pleiades
+  podMonitorSelector:
+    matchLabels:
+      app: strimzi

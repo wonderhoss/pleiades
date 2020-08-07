@@ -79,7 +79,7 @@ The `/deploy/kind` folder contains all relevant descriptors:
 
 ### Putting it all together
 
-First, create the Kind cluster
+#### First, create the Kind cluster
 ```
 $ pwd
 pleiades/deploy/kind
@@ -89,28 +89,34 @@ $ kind create cluster --config=kind-cluster.yaml
 $ kubectl config use-context kind-kind
 ```
 
-Deploy the Ingress Controller
+Create the `kafka` namespace
+```
+$ kubectl create namespace kafka
+```
+
+#### Deploy the Ingress Controller and Operators
 ```
 $ kubectl apply -f nginx-ingress/nginx-ingress.yaml
+$ kubectl apply -f prometheus-operator-bundle.yaml -f prometheus-servicemonitor.yaml
+$ kubectl apply -f strimzi/strimzi.yaml -f strimzi/kafka-podmonitor.yaml
 ```
 and wait for the pods to become ready.
 
-Next, deploy the Strimzi and Prometheus operators
+#### Deploy the Prometheus instance and Kafka cluster
 ```
-$ kubectl apply -f strimzi/strimzi.yaml
-$ kubectl apply -f prometheus/*
+$ kubectl apply -f prometheus/prometheus-instance.yaml - prometheus/prometheus-ingress.yaml
+$ kubectl apply -f pleiades/kafka-persistent-single.yaml
+$ kubectl apply -f pleiades/kafkatopic.yaml
 ```
+wait until Kafka is running (again, check Pod readiness)
 
-Again wait for Pods to become ready before deploying the Kafka resources
-```
-$ kubectl apply -f pleiades/kafka-persistent-single.yaml -f kafkatopic.yaml
-```
-
-Once Kafka is running (again, check Pod readiness), deploy Pleiades
+#### Deploy Pleiades
+Build a container image from the repo and transfer it into the Kind cluster, then create a Deployment
 ```
 $ docker build . -t pleiades:<your-tag>
 $ kind load docker-image pleiades:<your-tag>
 $ kubectl apply -f pleiades/pleiades-*
 ```
 
-You should be able to access Prometheus on http://localhost/prometheus and verify that it is scraping Pleiades by checking the `Targets` section.
+You should be able to access Prometheus on http://localhost/prometheus.
+Verify that Prometheus is scraping Pleiades and the Kafka cluster by checking the `Targets` section.
