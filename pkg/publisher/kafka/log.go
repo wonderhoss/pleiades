@@ -1,6 +1,8 @@
 package kafka
 
-import "github.com/spf13/viper"
+import (
+	"github.com/op/go-logging"
+)
 
 type crudLogger struct {
 	debugEnable bool
@@ -8,7 +10,7 @@ type crudLogger struct {
 type crudErrorLogger struct{}
 
 func newCrudLogger() *crudLogger {
-	if viper.GetBool("verbose") {
+	if logging.GetLevel("kafka-client") == logging.DEBUG {
 		return &crudLogger{debugEnable: true}
 	}
 	return &crudLogger{}

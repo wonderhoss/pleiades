@@ -4,7 +4,18 @@ import (
 	"os"
 
 	"github.com/op/go-logging"
-	"github.com/spf13/viper"
+)
+
+// Level defines available log levels
+type Level int
+
+const (
+	// QUIET will suppress all log messages except error and above
+	QUIET Level = 0
+	// DEFAULT is info-level logging
+	DEFAULT = 1
+	// VERBOSE includes all debug logs
+	VERBOSE = 2
 )
 
 var modules = []string{}
@@ -26,16 +37,18 @@ func MustGetLogger(moduleName string) *logging.Logger {
 }
 
 // InitLogLevel sets all registered loggers to use the verbosity indicated as command line flags
-func InitLogLevel() {
-	var verbose logging.Level
-	if viper.GetBool("verbose") {
-		verbose = logging.DEBUG
-	} else if viper.GetBool("quiet") {
-		verbose = logging.ERROR
-	} else {
-		verbose = logging.INFO
+func InitLogLevel(l Level) {
+	var logl logging.Level
+	switch l {
+	case QUIET:
+		logl = logging.ERROR
+	case DEFAULT:
+		logl = logging.INFO
+	case VERBOSE:
+		logl = logging.DEBUG
 	}
+
 	for _, m := range modules {
-		logging.SetLevel(verbose, m)
+		logging.SetLevel(logl, m)
 	}
 }

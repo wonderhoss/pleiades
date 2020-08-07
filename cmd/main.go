@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	//"log"
 
-	"os"
-	"os/signal"
-
 	"github.com/op/go-logging"
-	flag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
+
+	"github.com/spf13/cobra"
 
 	"github.com/gargath/pleiades/pkg/coordinator"
 	"github.com/gargath/pleiades/pkg/log"
@@ -19,81 +17,41 @@ import (
 const moduleName = "main"
 
 var (
-	c      *coordinator.Coordinator
-	logger *logging.Logger
+	c       *coordinator.Coordinator
+	logger  *logging.Logger
+	verbose bool
+	quiet   bool
 )
 
-func registerShutdownHook() {
-	logger.Debug("Registering shutdown handler")
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	go func() {
-		<-quit
-		logger.Debug("Shutting down...")
-		c.Stop()
-	}()
-}
-
-func validateFlags() {
-	if viper.GetBool("help") {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
-		os.Exit(0)
-	}
-	if viper.GetBool("verbose") && viper.GetBool("quiet") {
-		fmt.Fprintf(os.Stderr, "ERROR: -quiet and -verbose are mutually exclusive\n")
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
-		os.Exit(0)
-	}
-	if !viper.GetBool("kafka.enable") && !viper.GetBool("file.enable") {
-		fmt.Fprintf(os.Stderr, "ERROR: no publisher enabled\n")
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
-		os.Exit(0)
-	}
-	if viper.GetBool("kafka.enable") && viper.GetBool("file.enable") {
-		fmt.Fprintf(os.Stderr, "ERROR: only one publisher can be enabled\n")
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, flag.CommandLine.FlagUsages())
-		os.Exit(0)
-	}
-
-}
-
 func main() {
+	var rootCmd = &cobra.Command{
+		Use: "pleiades",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if verbose && quiet {
+				return fmt.Errorf(" -quiet and -verbose are mutually exclusive")
+			}
+			if verbose {
+				log.InitLogLevel(log.VERBOSE)
+			} else if quiet {
+				log.InitLogLevel(log.QUIET)
+			} else {
+				log.InitLogLevel(log.DEFAULT)
+			}
+			return nil
+		},
+	}
 
-	c = &coordinator.Coordinator{}
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress all output except for errors")
 
-	viper.SetEnvPrefix("PLEIADES")
-	viper.AutomaticEnv()
-
-	//	flag.String("listenAddr", "0.0.0.0:8080", "address to listen on")
-	flag.Bool("help", false, "print this help and exit")
-	flag.String("metricsPort", "9000", "the port to serve Prometheus metrics on")
-	flag.BoolP("verbose", "v", false, "enable verbose output")
-	flag.BoolP("quiet", "q", false, "quiet output - only show ERROR and above")
-	flag.BoolP("resume", "r", true, "try to resume from last seen event ID")
-
-	flag.Parse()
-	viper.BindPFlags(flag.CommandLine)
-
-	validateFlags()
+	rootCmd.AddCommand(cmdIngest)
+	rootCmd.AddCommand(cmdAgg)
 
 	logger = log.MustGetLogger(moduleName)
-	log.InitLogLevel()
 	logger.Infof("Pleiades %s\n", version())
 
-	registerShutdownHook()
-
-	initMetrics()
-
-	logger.Info("Starting up...")
-	lastEventID, err := c.Start()
+	err := rootCmd.Execute()
 	if err != nil {
-		logger.Errorf("Event consumer exited with error: %v", err)
+		os.Exit(1)
 	}
-	stopMetrics()
-	logger.Info("Shutdown complete")
-	logger.Infof("Last seen Event ID: %s", lastEventID)
 }

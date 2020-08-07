@@ -3,7 +3,6 @@ package kafka
 import (
 	"github.com/gargath/pleiades/pkg/sse"
 	. "github.com/onsi/ginkgo"
-	"github.com/spf13/viper"
 
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,10 +16,11 @@ var _ = Describe("Kafka Client Prometheus Collector", func() {
 		broker := "foo"
 		topic := "bar"
 
-		viper.Set("kafka.broker", broker)
-		viper.Set("kafka.topic", topic)
-
-		pub, err := NewPublisher(ch)
+		pub, err := NewPublisher(&Opts{
+			Broker: broker,
+			Topic:  topic,
+		},
+			ch)
 		Expect(err).NotTo(HaveOccurred())
 		p := pub.(*Publisher)
 		Expect(p.destination.Topic).Should(Equal(topic))

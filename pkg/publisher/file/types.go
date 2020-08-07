@@ -14,6 +14,16 @@ type Publisher struct {
 	prefix      string
 }
 
+// Opts hold config options for the file publisher
+type Opts struct {
+	Destination string
+}
+
+// PublisherConfig contains configuration for the file Publisher
+type PublisherConfig struct {
+	Destination string
+}
+
 // ErrNoDest indicates that the FilePublisher has no destination path
 var ErrNoDest error = fmt.Errorf("No destination path set")
 

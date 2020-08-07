@@ -7,8 +7,6 @@ import (
 	"time"
 
 	kafka "github.com/segmentio/kafka-go"
-	flag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
 
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher"
@@ -30,16 +28,10 @@ var (
 	)
 )
 
-func init() {
-	flag.Bool("kafka.enable", false, "enable the kafka publisher")
-	flag.String("kafka.broker", "localhost:9092", "the kafka broker to connect to")
-	flag.String("kafka.topic", "pleiades-events", "the kafka topic to publish to")
-}
-
 // NewPublisher returns a Publisher initialized with the source channel and kafka destination provided
-func NewPublisher(src <-chan *sse.Event) (publisher.Publisher, error) {
-	dest := viper.GetString("kafka.broker") // TODO: Remove viper references and use config struct instead
-	topic := viper.GetString("kafka.topic")
+func NewPublisher(opts *Opts, src <-chan *sse.Event) (publisher.Publisher, error) {
+	dest := opts.Broker
+	topic := opts.Topic
 	if src == nil {
 		return nil, ErrNilChan
 	}
