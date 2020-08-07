@@ -13,7 +13,7 @@ var (
 	cmdIngest = &cobra.Command{
 		Use:   "ingest",
 		Short: "Starts Pleiades ingest server",
-		Long: `ingest starts the ingest server.
+		Long: `The ingest command starts the ingest server.
 It will begin consuming the WMF stream and publish received events to the configured publisher.`,
 		RunE: startIngest,
 	}

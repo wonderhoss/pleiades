@@ -13,18 +13,27 @@ Prometheus metrics are provided on `/metrics`.
 ## Usage
 
 ```
-$ pleiades --help
-Usage of pleiades:
-      --file.enable              enable the file publisher
+$ pleiades help ingest
+ingest starts the ingest server.
+It will begin consuming the WMF stream and publish received events to the configured publisher.
+
+Usage:
+  pleiades ingest [flags]
+
+Flags:
+      --file.enable              enable the filesystem publisher
       --file.publishDir string   the directory to publish events to (default "./events")
-      --help                     print this help and exit
+  -h, --help                     help for ingest
       --kafka.broker string      the kafka broker to connect to (default "localhost:9092")
       --kafka.enable             enable the kafka publisher
       --kafka.topic string       the kafka topic to publish to (default "pleiades-events")
       --metricsPort string       the port to serve Prometheus metrics on (default "9000")
-  -q, --quiet                    quiet output - only show ERROR and above
   -r, --resume                   try to resume from last seen event ID (default true)
-  -v, --verbose                  enable verbose output
+
+Global Flags:
+  -q, --quiet     suppress all output except for errors
+  -v, --verbose   enable verbose output
+
   ```
 
 * Only one publisher can be enabled at a time, use either `--file.enable` or `--kafka.enable`.
@@ -99,6 +108,8 @@ $ kubectl apply -f pleiades/kafka-persistent-single.yaml -f kafkatopic.yaml
 
 Once Kafka is running (again, check Pod readiness), deploy Pleiades
 ```
+$ docker build . -t pleiades:<your-tag>
+$ kind load docker-image pleiades:<your-tag>
 $ kubectl apply -f pleiades/pleiades-*
 ```
 
