@@ -12,6 +12,7 @@ type Publisher struct {
 	source      <-chan *sse.Event
 	msgCount    int64
 	prefix      string
+	lastEventID string
 }
 
 // Opts hold config options for the file publisher

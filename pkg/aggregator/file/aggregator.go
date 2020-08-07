@@ -122,9 +122,9 @@ func (a *Aggregator) Stop() {
 func (a *Aggregator) run() error {
 	for {
 		start := time.Now()
-		logger.Infof("Reading directory listing for %s", a.File.Source)
+		logger.Debugf("Reading directory listing for %s", a.File.Source)
 		files, err := ioutil.ReadDir(a.File.Source)
-		logger.Infof("Listing directory took %s", time.Since(start))
+		logger.Debugf("Listing directory took %s", time.Since(start))
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func (a *Aggregator) run() error {
 			case <-a.stop:
 				return nil
 			default:
-				logger.Debugf("No files in source directory - will try again in 5 seconds")
+				logger.Info("No files in source directory - will try again in 5 seconds")
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				a.r.Ping(ctx)
