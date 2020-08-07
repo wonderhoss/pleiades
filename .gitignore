@@ -1,3 +1,4 @@
 .env
 /pleiades
 events/
+dump.rdb

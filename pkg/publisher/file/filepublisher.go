@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-
-	uuid "github.com/satori/go.uuid"
+	"strconv"
+	"time"
 
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher"
@@ -54,7 +54,7 @@ func NewPublisher(opts *Opts, src <-chan *sse.Event) (publisher.Publisher, error
 		logger.Errorf("destination path %s exists and is file", dest)
 		return nil, fmt.Errorf("destination path %s exists as file", dest)
 	}
-	uid := uuid.NewV4().String()
+	uid := strconv.FormatInt(time.Now().Unix(), 10)
 	f := &Publisher{
 		source:      src,
 		destination: dest,
