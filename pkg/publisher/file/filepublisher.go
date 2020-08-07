@@ -107,7 +107,7 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 }
 
 // GetResumeID attempts to read the ID of the last processed event from disk and returns it
-func (f *Publisher) GetResumeID() string {
+func (f *Publisher) GetResumeID() string { //TODO: Store this in separate file. Otherwise aggregator will slurp away the last one
 	files, err := ioutil.ReadDir(f.destination)
 	if err != nil {
 		logger.Errorf("failed to read directory listing: %v", err)

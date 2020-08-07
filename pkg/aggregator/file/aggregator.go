@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/gargath/pleiades/pkg/aggregator"
 	"github.com/gargath/pleiades/pkg/log"
@@ -19,12 +21,19 @@ import (
 const moduleName = "file-agg"
 
 var (
-	wg sync.WaitGroup
-
 	// ErrNoSrc is returned when an Aggregator is created without a source directory
 	ErrNoSrc = fmt.Errorf("No source directory provided")
 
+	procTime = promauto.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "pleiades_aggregator_file_process_duration_milliseconds",
+			Help:    "Time taken to process files",
+			Buckets: []float64{5, 10, 100, 500},
+		},
+	)
+
 	logger = log.MustGetLogger(moduleName)
+	wg     sync.WaitGroup
 )
 
 // NewAggregator returns a Aggregator initialized with the source path provided
@@ -125,6 +134,9 @@ func (a *Aggregator) run() error {
 				return nil
 			default:
 				logger.Debugf("No files in source directory - will try again in 5 seconds")
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				a.r.Ping(ctx)
 				time.Sleep(5 * time.Second)
 			}
 		} else {
@@ -144,7 +156,9 @@ func (a *Aggregator) run() error {
 }
 
 func (a *Aggregator) processFile(filename string) error {
-	//	start := time.Now()
+	defer func(start time.Time) {
+		procTime.Observe(float64(time.Since(start).Milliseconds()))
+	}(time.Now())
 
 	fh, err := os.Open(filename)
 	if err != nil {
@@ -170,16 +184,15 @@ func (a *Aggregator) processFile(filename string) error {
 	}
 	for _, counter := range counters {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
 		err := a.r.Incr(ctx, counter).Err()
 		if err != nil {
-			logger.Errorf("failed to increment Redis counter: %v", err)
+			return fmt.Errorf("failed to increment Redis counter: %v", err)
 		}
-		cancel()
 	}
 	err = os.Remove(filename)
 	if err != nil {
 		return fmt.Errorf("failed to delete source file %s: %v", filename, err)
 	}
-	//	logger.Debugf("Finished %s in %s", filename, time.Since(start))
 	return nil
 }
