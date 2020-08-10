@@ -16,10 +16,12 @@ build: clean $(BINARY)
 clean:
 	rm -f $(BINARY)
 	rm -rf events
+	rm -f .pleiades_resumeID
 
 .PHONY: distclean
 distclean: clean
 	rm -f .env
+	rm -f dump.rdb
 
 # Run go fmt against code
 .PHONY: fmt

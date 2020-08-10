@@ -168,7 +168,7 @@ func (a *Aggregator) processFile(filename string) error {
 	if !scanner.Scan() {
 		return fmt.Errorf("premature end of file while reading %s", filename)
 	}
-	_ = scanner.Text()
+	msgID := scanner.Text()
 	if !scanner.Scan() {
 		return fmt.Errorf("premature end of file while reading %s", filename)
 	}
@@ -179,6 +179,7 @@ func (a *Aggregator) processFile(filename string) error {
 	fh.Close()
 
 	counters, err := aggregator.CountersFromEventData(eventData)
+	aggregator.RecordLag(msgID)
 	if err != nil {
 		return fmt.Errorf("error processing file %s: %v", filename, err)
 	}

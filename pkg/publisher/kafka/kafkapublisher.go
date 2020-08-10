@@ -109,7 +109,9 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 		pubErrors.WithLabelValues("event_data_read").Inc()
 		return fmt.Errorf("error reading event data: %v", err)
 	}
-	err = f.w.WriteMessages(context.Background(), kafka.Message{
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = f.w.WriteMessages(ctx, kafka.Message{
 		Key:   []byte(e.ID),
 		Value: d,
 	})

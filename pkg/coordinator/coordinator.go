@@ -175,6 +175,8 @@ func (c *Coordinator) Start() (string, error) {
 func (c *Coordinator) Stop() {
 	close(c.stop)
 	wgPub.Wait()
+	logger.Debug("publisher waitgroup finished - connection to kafka closed")
 	close(c.events)
 	wgSub.Wait()
+	logger.Debug("subscriber waitgroup finished - SSE connection closed")
 }

@@ -36,13 +36,10 @@ func startAggregator(cmd *cobra.Command, args []string) error {
 		})
 	}
 	if kafkaOn { //TODO: Write NewAccregator() function
-		a = &kafka.Aggregator{
-			Redis: redisOpts,
-			Kafka: &kafka.Opts{
-				Broker: kafkaBroker,
-				Topic:  kafkaTopic,
-			},
-		}
+		a, aggErr = kafka.NewAggregator(redisOpts, &kafka.Opts{
+			Broker: kafkaBroker,
+			Topic:  kafkaTopic,
+		})
 	}
 	if aggErr != nil {
 		return aggErr

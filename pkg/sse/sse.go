@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -96,15 +97,32 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 	} else {
 		logger.Info("Starting new subscription")
 	}
-
-	res, err := client.Do(req)
-	if err != nil {
+	var res *http.Response
+	succChan := make(chan (*http.Response))
+	errChan := make(chan (error))
+	defer close(succChan)
+	defer close(errChan)
+	go func() {
+		response, responseError := client.Do(req)
+		if responseError != nil {
+			errChan <- responseError
+		}
+		succChan <- response
+	}()
+	select {
+	case err := <-errChan:
 		logger.Errorf("Error performing HTTP request for %s: %v", uri, err)
 		return lastEventID, fmt.Errorf("error performing request for %s: %v", uri, err)
-	}
-	if res.StatusCode > 299 {
-		logger.Errorf("Server at %s responded %s", uri, res.StatusCode)
-		return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
+	case <-time.After(5 * time.Second):
+		logger.Errorf("Timeout while waiting for first byte from server")
+		recvErrors.WithLabelValues("request_timeout").Inc()
+		return lastEventID, fmt.Errorf("timeout performing HTTP request")
+	case resp := <-succChan:
+		res = resp
+		if res.StatusCode > 299 {
+			logger.Errorf("Server at %s responded %s", uri, res.StatusCode)
+			return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
+		}
 	}
 
 	br := bufio.NewReader(res.Body)
@@ -120,11 +138,33 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 			logger.Debug("SSE consumer stopped")
 			return lastEventID, nil
 		default:
-			bs, err := br.ReadBytes('\n')
-
-			if err != nil && err != io.EOF {
-				recvErrors.WithLabelValues("read_error").Inc()
-				return lastEventID, fmt.Errorf("error reading from response body: %v", err)
+			lineChan := make(chan ([]byte))
+			errChan := make(chan (error))
+			go func() {
+				bodyBytes, err := br.ReadBytes('\n')
+				if err != nil {
+					errChan <- err
+				} else {
+					lineChan <- bodyBytes
+				}
+			}()
+			var bs []byte
+			select {
+			case lineBytes := <-lineChan:
+				bs = make([]byte, len(lineBytes))
+				copy(bs, lineBytes)
+			case rderr := <-errChan:
+				if rderr != io.EOF {
+					recvErrors.WithLabelValues("read_error").Inc()
+					return lastEventID, fmt.Errorf("error reading from response body: %v", rderr)
+				}
+				recvErrors.WithLabelValues("eof").Inc()
+				logger.Warning("encountered EOF while reading server response - consumer terminating")
+				return lastEventID, nil
+			case <-time.After(5 * time.Second):
+				logger.Warning("timeout reading from response body")
+				recvErrors.WithLabelValues("body_read_timeout").Inc()
+				return lastEventID, fmt.Errorf("timeout while reading from response body")
 			}
 
 			if len(bs) < 2 { //newline indicates end of event, emit this one, start populating a new one
@@ -137,12 +177,6 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 			}
 
 			parseLine(bs, currEvent)
-
-			if err == io.EOF {
-				recvErrors.WithLabelValues("eof").Inc()
-				logger.Warning("encountered EOF while reading server response - consumer terminating")
-				return lastEventID, nil
-			}
 		}
 	}
 }
