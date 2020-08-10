@@ -178,7 +178,7 @@ func (a *Aggregator) processFile(filename string) error {
 	}
 	fh.Close()
 
-	counters, err := aggregator.CountersFromEventData(eventData)
+	counters, lendiff, err := aggregator.CountersFromEventData(eventData)
 	aggregator.RecordLag(msgID)
 	if err != nil {
 		return fmt.Errorf("error processing file %s: %v", filename, err)
@@ -190,6 +190,12 @@ func (a *Aggregator) processFile(filename string) error {
 		if err != nil {
 			return fmt.Errorf("failed to increment Redis counter: %v", err)
 		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	err = a.r.IncrBy(ctx, "pleiades_growth", lendiff).Err()
+	if err != nil {
+		return fmt.Errorf("failed to increment Redis growth counter: %v", err)
 	}
 	err = os.Remove(filename)
 	if err != nil {

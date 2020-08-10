@@ -158,7 +158,7 @@ func (a *Aggregator) processEvent(id []byte, data []byte) error {
 		procTime.Observe(float64(time.Since(start).Milliseconds()))
 	}(time.Now())
 
-	counters, err := aggregator.CountersFromEventData(data)
+	counters, lendiff, err := aggregator.CountersFromEventData(data)
 	aggregator.RecordLag(string(id))
 	if err != nil {
 		return fmt.Errorf("error processing event: %s, %v", string(data), err)
@@ -170,6 +170,12 @@ func (a *Aggregator) processEvent(id []byte, data []byte) error {
 		if err != nil {
 			return fmt.Errorf("failed to increment Redis counter: %v", err)
 		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	err = a.r.IncrBy(ctx, "pleiades_growth", lendiff).Err()
+	if err != nil {
+		return fmt.Errorf("failed to increment Redis growth counter: %v", err)
 	}
 
 	msgTotal.Inc()

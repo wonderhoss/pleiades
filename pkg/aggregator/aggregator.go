@@ -29,13 +29,13 @@ var (
 )
 
 // CountersFromEventData parses an event body and generates the Redis counters to increment for it
-func CountersFromEventData(data []byte) ([]string, error) {
+func CountersFromEventData(data []byte) ([]string, int64, error) {
 	var counters = []string{"pleiades_total"}
 	var event MediawikiRecentchange
 	err := json.Unmarshal(data, &event)
 	if err != nil {
 		logger.Debugf("failed to parse event data line: %s", string(data))
-		return counters, fmt.Errorf("failed to parse event data: %v", err)
+		return counters, 0, fmt.Errorf("failed to parse event data: %v", err)
 	}
 	if event.Wiki != "" {
 		counters = append(counters, "pleiades_wiki_"+event.Wiki)
@@ -60,7 +60,8 @@ func CountersFromEventData(data []byte) ([]string, error) {
 			counters = append(counters, "pleiades_length_dec")
 		}
 	}
-	return counters, nil
+	lendiff := event.Length.New - event.Length.Old
+	return counters, lendiff, nil
 }
 
 // RecordLag parses the timestamp from a event ID and observes the lag as Prometheus metrics
