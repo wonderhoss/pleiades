@@ -52,12 +52,13 @@ func NewAggregator(redisOpts *aggregator.RedisOpts, opts *Opts) (*Aggregator, er
 	}
 
 	k := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        []string{broker},
-		GroupID:        "pleiades-aggregator-group",
-		Topic:          topic,
-		CommitInterval: time.Second,
-		ErrorLogger:    &crudErrorLogger{},
-		Logger:         newCrudLogger(),
+		Brokers:               []string{broker},
+		GroupID:               "pleiades-aggregator-group",
+		Topic:                 topic,
+		CommitInterval:        time.Second,
+		ErrorLogger:           &crudErrorLogger{},
+		Logger:                newCrudLogger(),
+		WatchPartitionChanges: true,
 	})
 
 	r := redis.NewClient(&redis.Options{
@@ -163,6 +164,7 @@ func (a *Aggregator) processEvent(id []byte, data []byte) error {
 	if err != nil {
 		return fmt.Errorf("error processing event: %s, %v", string(data), err)
 	}
+	// TODO: this is duplicatede between the two aggregators. Should refactor.
 	for _, counter := range counters {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
@@ -171,6 +173,7 @@ func (a *Aggregator) processEvent(id []byte, data []byte) error {
 			return fmt.Errorf("failed to increment Redis counter: %v", err)
 		}
 	}
+	// TODO: remove that duplication below once the return from CountersFromEventData() is less stupid
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	err = a.r.IncrBy(ctx, "pleiades_growth", lendiff).Err()

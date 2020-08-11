@@ -183,6 +183,7 @@ func (a *Aggregator) processFile(filename string) error {
 	if err != nil {
 		return fmt.Errorf("error processing file %s: %v", filename, err)
 	}
+	// TODO: this is duplicatede between the two aggregators. Should refactor.
 	for _, counter := range counters {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
@@ -191,6 +192,7 @@ func (a *Aggregator) processFile(filename string) error {
 			return fmt.Errorf("failed to increment Redis counter: %v", err)
 		}
 	}
+	// TODO: remove that duplication below once the return from CountersFromEventData() is less stupid
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	err = a.r.IncrBy(ctx, "pleiades_growth", lendiff).Err()

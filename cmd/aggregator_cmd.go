@@ -35,7 +35,7 @@ func startAggregator(cmd *cobra.Command, args []string) error {
 			Source: fileDir,
 		})
 	}
-	if kafkaOn { //TODO: Write NewAccregator() function
+	if kafkaOn {
 		a, aggErr = kafka.NewAggregator(redisOpts, &kafka.Opts{
 			Broker: kafkaBroker,
 			Topic:  kafkaTopic,

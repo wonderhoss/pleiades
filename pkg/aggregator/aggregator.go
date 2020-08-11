@@ -29,7 +29,8 @@ var (
 )
 
 // CountersFromEventData parses an event body and generates the Redis counters to increment for it
-func CountersFromEventData(data []byte) ([]string, int64, error) {
+func CountersFromEventData(data []byte) ([]string, int64, error) { //TODO: This should return a set of counters and increments to allow for more than just +1
+	var lendiff int64 = 0
 	var counters = []string{"pleiades_total"}
 	var event MediawikiRecentchange
 	err := json.Unmarshal(data, &event)
@@ -59,8 +60,8 @@ func CountersFromEventData(data []byte) ([]string, int64, error) {
 		} else {
 			counters = append(counters, "pleiades_length_dec")
 		}
+		lendiff = event.Length.New - event.Length.Old
 	}
-	lendiff := event.Length.New - event.Length.Old
 	return counters, lendiff, nil
 }
 
