@@ -7,6 +7,7 @@ require (
 	github.com/a-h/generate v0.0.0-20190312091541-e59c34d33fb3 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.0.0-beta.7
+	github.com/gorilla/mux v1.7.4
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7

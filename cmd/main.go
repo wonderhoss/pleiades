@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	//"log"
-
 	"github.com/op/go-logging"
 
 	"github.com/spf13/cobra"
@@ -41,12 +39,13 @@ func main() {
 			} else {
 				log.InitLogLevel(log.DEFAULT)
 			}
+			if cmd.Use != "frontend" {
+				if fileOn && kafkaOn {
+					return fmt.Errorf("Can only specify either --file.enable or --kafka.enable")
 
-			if fileOn && kafkaOn {
-				return fmt.Errorf("Can only specify either --file.enable or --kafka.enable")
-
-			} else if !fileOn && !kafkaOn {
-				return fmt.Errorf("No queue backend specified (use either --file.enable or --kafka.enable)")
+				} else if !fileOn && !kafkaOn {
+					return fmt.Errorf("No queue backend specified (use either --file.enable or --kafka.enable)")
+				}
 			}
 			initMetrics(metricsPort)
 			return nil
@@ -67,6 +66,7 @@ func main() {
 
 	rootCmd.AddCommand(cmdIngest)
 	rootCmd.AddCommand(cmdAgg)
+	rootCmd.AddCommand(cmdFront)
 
 	logger = log.MustGetLogger(moduleName)
 	logger.Infof("Pleiades %s\n", version())
