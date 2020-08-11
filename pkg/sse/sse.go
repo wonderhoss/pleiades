@@ -19,7 +19,13 @@ import (
 const moduleName = "sse"
 
 var (
-	client         = &http.Client{}
+	succChan = make(chan (*http.Response))
+	errChan  = make(chan (error))
+)
+
+// TODO: Rework metrics to ensure they only register when correct personality is running.
+// Currently aggregators expose these, too.
+var (
 	lastEventID    string
 	eventsReceived = promauto.NewCounter(
 		prometheus.CounterOpts{
@@ -82,6 +88,7 @@ func parseLine(bs []byte, currEvent *Event) {
 //close the stream. This is blocking, and so you will likely want to call this
 //in a new goroutine (via `go Notify(..)`)
 func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan bool) (string, error) {
+	client := &http.Client{}
 	if evCh == nil {
 		return lastEventID, ErrNilChan
 	}
@@ -98,10 +105,7 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 		logger.Info("Starting new subscription")
 	}
 	var res *http.Response
-	succChan := make(chan (*http.Response))
-	errChan := make(chan (error))
-	defer close(succChan)
-	defer close(errChan)
+
 	go func() {
 		response, responseError := client.Do(req)
 		if responseError != nil {
