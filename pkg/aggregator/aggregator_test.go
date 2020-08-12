@@ -17,7 +17,7 @@ var _ = Describe("Aggregator Parser", func() {
 		}
 
 		for k, v := range ids {
-			ts, err := parseTimestamp(v)
+			ts, err := ParseTimestamp(v)
 			Expect(ts).Should(Equal(k))
 			if k == 0 {
 				Expect(err).To(HaveOccurred())

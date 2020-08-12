@@ -22,7 +22,7 @@ var (
 	listenAddr    string
 )
 
-func init() {
+func init() { //TODO: Use Sentinels
 	cmdFront.Flags().StringVar(&frontendRedis, "frontend-redis-addr", "localhost:6379", "the Redis server to write aggregated stats to")
 	cmdFront.Flags().StringVar(&listenAddr, "listen-addr", ":8080", "the address to listen on")
 

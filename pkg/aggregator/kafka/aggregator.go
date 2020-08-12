@@ -140,7 +140,7 @@ func (a *Aggregator) run() error {
 			msg, err := a.k.ReadMessage(ctx)
 			if ctx.Err() == context.DeadlineExceeded {
 				cancel()
-				logger.Info("No new messages on topic for 5 seconds. Will try again")
+				logger.Debug("No new messages on topic for 5 seconds. Will try again")
 				continue
 			}
 			defer cancel()
@@ -164,13 +164,25 @@ func (a *Aggregator) processEvent(id []byte, data []byte) error {
 	if err != nil {
 		return fmt.Errorf("error processing event: %s, %v", string(data), err)
 	}
+
+	eventTimestamp, err := aggregator.ParseTimestamp(string(id))
+	if err != nil {
+		return fmt.Errorf("failed to parse timestamp from message: %s: %v", string(id), err)
+	}
+	var julianDay int64 = eventTimestamp / 86400000
+	julianPrefix := fmt.Sprintf("day_%d_", julianDay)
+
 	// TODO: this is duplicatede between the two aggregators. Should refactor.
 	for _, counter := range counters {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		err := a.r.Incr(ctx, counter).Err()
 		if err != nil {
-			return fmt.Errorf("failed to increment Redis counter: %v", err)
+			return fmt.Errorf("failed to increment Redis counter %s: %v", counter, err)
+		}
+		err = a.r.Incr(ctx, julianPrefix+counter).Err()
+		if err != nil {
+			return fmt.Errorf("failed to increment Redis counter %s: %v", julianPrefix+counter, err)
 		}
 	}
 	// TODO: remove that duplication below once the return from CountersFromEventData() is less stupid
@@ -179,6 +191,10 @@ func (a *Aggregator) processEvent(id []byte, data []byte) error {
 	err = a.r.IncrBy(ctx, "pleiades_growth", lendiff).Err()
 	if err != nil {
 		return fmt.Errorf("failed to increment Redis growth counter: %v", err)
+	}
+	err = a.r.IncrBy(ctx, julianPrefix+"pleiades_growth", lendiff).Err()
+	if err != nil {
+		return fmt.Errorf("failed to increment historic Redis growth counter: %v", err)
 	}
 
 	msgTotal.Inc()

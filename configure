@@ -158,6 +158,8 @@ check_for tar
 check_for go
 check_for ginkgo
 check_for golangci-lint
+check_for npm
+check_for parcel
 check_go_version
 check_go_env
 
@@ -171,6 +173,8 @@ GO := ${tools[go]}
 GOVERSION := $GO_VERSION
 GINKGO := ${tools[ginkgo]}
 LINTER := ${tools[golangci-lint]}
+PARCEL := ${tools[parcel]}
+NPM := ${tools[npm]}
 EOF
 
 echo "Environment configuration written to .env"

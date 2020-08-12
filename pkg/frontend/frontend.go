@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gargath/pleiades/pkg/log"
+	"github.com/gargath/pleiades/pkg/web/static"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 )
@@ -33,8 +34,10 @@ func (f *Frontend) Start() error {
 	sr := r.PathPrefix("/api").Subrouter()
 	sr.HandleFunc("/stats", f.statsHandler)
 	//	s.HandleFunc("/stats/{key}", f.singleStatHandler)
-	r.HandleFunc("/ws", f.websocketHandler)
-	r.PathPrefix("/").HandlerFunc(homeHandler)
+	//	r.HandleFunc("/ws", f.websocketHandler)
+
+	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(static.Assets)))
+
 	s := &http.Server{
 		Addr:    f.listenAddr,
 		Handler: r,

@@ -10,18 +10,28 @@ ECHO := echo
 all: test build
 
 .PHONY: build
-build: clean $(BINARY)
+build: clean web generate $(BINARY)
+
+.PHONY: web
+web: web/dist
+
+.PHONY: generate
+generate:
+	make -C pkg generate
 
 .PHONY: clean
 clean:
 	rm -f $(BINARY)
 	rm -rf events
 	rm -f .pleiades_resumeID
+	make -C web clean
+	make -C pkg clean
 
 .PHONY: distclean
 distclean: clean
 	rm -f .env
 	rm -f dump.rdb
+	make -C web distclean
 
 # Run go fmt against code
 .PHONY: fmt
@@ -59,6 +69,14 @@ test:
 	$(GINKGO) -v -p -race -randomizeAllSpecs ./pkg/... ./cmd/...
 	@ $(ECHO)
 
+.PHONY: dev
+dev:
+	make -C web dev &
+	GO111MODULE=on $(GO) run -tags dev github.com/gargath/pleiades/cmd frontend
+
 # Build binary
-$(BINARY): fmt vet
+$(BINARY): fmt vet generate
 	GO111MODULE=on CGO_ENABLED=0 $(GO) build -o $(BINARY) -ldflags="-X main.VERSION=${VERSION}" github.com/gargath/pleiades/cmd
+
+web/dist:
+	make -C web build

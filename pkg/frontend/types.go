@@ -27,6 +27,7 @@ type Opts struct {
 
 // Counters is the return type for the stats API
 type Counters struct {
+	Since    int64
 	Counters []Counter
 }
 

@@ -118,15 +118,17 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 		logger.Errorf("Error performing HTTP request for %s: %v", uri, err)
 		return lastEventID, fmt.Errorf("error performing request for %s: %v", uri, err)
 	case <-time.After(5 * time.Second):
-		logger.Errorf("Timeout while waiting for first byte from server")
 		recvErrors.WithLabelValues("request_timeout").Inc()
 		return lastEventID, fmt.Errorf("timeout performing HTTP request")
 	case resp := <-succChan:
-		res = resp
-		if res.StatusCode > 299 {
-			logger.Errorf("Server at %s responded %s", uri, res.StatusCode)
-			return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
+		if resp == nil {
+			return lastEventID, fmt.Errorf("unknown error reading HTTP response")
 		}
+		if resp.StatusCode > 299 {
+			logger.Errorf("Server at %s responded %s", uri, resp.StatusCode)
+			return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, resp.StatusCode)
+		}
+		res = resp
 	}
 
 	br := bufio.NewReader(res.Body)

@@ -67,7 +67,7 @@ func CountersFromEventData(data []byte) ([]string, int64, error) { //TODO: This 
 
 // RecordLag parses the timestamp from a event ID and observes the lag as Prometheus metrics
 func RecordLag(id string) {
-	timeStamp, err := parseTimestamp(id)
+	timeStamp, err := ParseTimestamp(id)
 	if err != nil {
 		logger.Errorf("Error parsing event ID: %v", err)
 	}
@@ -75,7 +75,8 @@ func RecordLag(id string) {
 	msgLag.Observe(float64(lag))
 }
 
-func parseTimestamp(id string) (int64, error) {
+// ParseTimestamp extracts the event timestamp from an event ID
+func ParseTimestamp(id string) (int64, error) {
 	match := timeStampRegExp.FindStringSubmatch(id)
 	if len(match) < 2 {
 		return 0, fmt.Errorf("Event ID %s has no timestamp", id)

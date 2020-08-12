@@ -20,7 +20,7 @@ var (
 	redis string
 )
 
-func init() {
+func init() { //TODO: Use Sentinels
 	cmdAgg.Flags().StringVar(&redis, "redis-addr", "localhost:6379", "the Redis server to write aggregated stats to")
 }
 

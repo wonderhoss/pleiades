@@ -138,6 +138,9 @@ func (c *Coordinator) Start() (string, error) {
 					lastEventID = eid
 					if err != nil {
 						logger.Errorf("Event consumer exited with error: %v", err)
+						logger.Info("Backing off for 30 seconds")
+						time.Sleep(30 * time.Second)
+						logger.Info("Restarting SSE consumer")
 					}
 				}
 			}

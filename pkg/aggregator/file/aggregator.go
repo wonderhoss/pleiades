@@ -184,12 +184,24 @@ func (a *Aggregator) processFile(filename string) error {
 		return fmt.Errorf("error processing file %s: %v", filename, err)
 	}
 	// TODO: this is duplicatede between the two aggregators. Should refactor.
+
+	eventTimestamp, err := aggregator.ParseTimestamp(string(msgID))
+	if err != nil {
+		return fmt.Errorf("failed to parse timestamp from message: %s: %v", string(msgID), err)
+	}
+	var julianDay int64 = eventTimestamp / 86400000
+	julianPrefix := fmt.Sprintf("day_%d_", julianDay)
+
 	for _, counter := range counters {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		err := a.r.Incr(ctx, counter).Err()
 		if err != nil {
-			return fmt.Errorf("failed to increment Redis counter: %v", err)
+			return fmt.Errorf("failed to increment Redis counter %s: %v", counter, err)
+		}
+		err = a.r.Incr(ctx, julianPrefix+counter).Err()
+		if err != nil {
+			return fmt.Errorf("failed to increment Redis counter %s: %v", julianPrefix+counter, err)
 		}
 	}
 	// TODO: remove that duplication below once the return from CountersFromEventData() is less stupid
@@ -199,6 +211,11 @@ func (a *Aggregator) processFile(filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to increment Redis growth counter: %v", err)
 	}
+	err = a.r.IncrBy(ctx, julianPrefix+"pleiades_growth", lendiff).Err()
+	if err != nil {
+		return fmt.Errorf("failed to increment historic Redis growth counter: %v", err)
+	}
+
 	err = os.Remove(filename)
 	if err != nil {
 		return fmt.Errorf("failed to delete source file %s: %v", filename, err)

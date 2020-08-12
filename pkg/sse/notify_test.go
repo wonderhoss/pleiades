@@ -113,7 +113,7 @@ var _ = Describe("SSE Consumer", func() {
 	})
 
 	Context("when a server error occurs", func() {
-		It("exist cleanly on 404", func() {
+		It("exits cleanly on 404", func() {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(404)
 			}))
@@ -137,7 +137,7 @@ var _ = Describe("SSE Consumer", func() {
 			Expect(len(events)).Should(Equal(0))
 		})
 
-		It("exist cleanly on malformed resposne", func() {
+		It("exits cleanly on malformed resposne", func() {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Length", "77")
 				w.WriteHeader(200)
