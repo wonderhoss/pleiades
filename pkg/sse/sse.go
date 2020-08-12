@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,7 +19,13 @@ import (
 const moduleName = "sse"
 
 var (
-	client         = &http.Client{}
+	succChan = make(chan (*http.Response))
+	errChan  = make(chan (error))
+)
+
+// TODO: Rework metrics to ensure they only register when correct personality is running.
+// Currently aggregators expose these, too.
+var (
 	lastEventID    string
 	eventsReceived = promauto.NewCounter(
 		prometheus.CounterOpts{
@@ -81,6 +88,7 @@ func parseLine(bs []byte, currEvent *Event) {
 //close the stream. This is blocking, and so you will likely want to call this
 //in a new goroutine (via `go Notify(..)`)
 func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan bool) (string, error) {
+	client := &http.Client{}
 	if evCh == nil {
 		return lastEventID, ErrNilChan
 	}
@@ -96,15 +104,31 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 	} else {
 		logger.Info("Starting new subscription")
 	}
+	var res *http.Response
 
-	res, err := client.Do(req)
-	if err != nil {
+	go func() {
+		response, responseError := client.Do(req)
+		if responseError != nil {
+			errChan <- responseError
+		}
+		succChan <- response
+	}()
+	select {
+	case err := <-errChan:
 		logger.Errorf("Error performing HTTP request for %s: %v", uri, err)
 		return lastEventID, fmt.Errorf("error performing request for %s: %v", uri, err)
-	}
-	if res.StatusCode > 299 {
-		logger.Errorf("Server at %s responded %s", uri, res.StatusCode)
-		return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, res.StatusCode)
+	case <-time.After(5 * time.Second):
+		recvErrors.WithLabelValues("request_timeout").Inc()
+		return lastEventID, fmt.Errorf("timeout performing HTTP request")
+	case resp := <-succChan:
+		if resp == nil {
+			return lastEventID, fmt.Errorf("unknown error reading HTTP response")
+		}
+		if resp.StatusCode > 299 {
+			logger.Errorf("Server at %s responded %s", uri, resp.StatusCode)
+			return lastEventID, fmt.Errorf("non 2xx status code from request for %s: %d", uri, resp.StatusCode)
+		}
+		res = resp
 	}
 
 	br := bufio.NewReader(res.Body)
@@ -120,11 +144,33 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 			logger.Debug("SSE consumer stopped")
 			return lastEventID, nil
 		default:
-			bs, err := br.ReadBytes('\n')
-
-			if err != nil && err != io.EOF {
-				recvErrors.WithLabelValues("read_error").Inc()
-				return lastEventID, fmt.Errorf("error reading from response body: %v", err)
+			lineChan := make(chan ([]byte))
+			errChan := make(chan (error))
+			go func() {
+				bodyBytes, err := br.ReadBytes('\n')
+				if err != nil {
+					errChan <- err
+				} else {
+					lineChan <- bodyBytes
+				}
+			}()
+			var bs []byte
+			select {
+			case lineBytes := <-lineChan:
+				bs = make([]byte, len(lineBytes))
+				copy(bs, lineBytes)
+			case rderr := <-errChan:
+				if rderr != io.EOF {
+					recvErrors.WithLabelValues("read_error").Inc()
+					return lastEventID, fmt.Errorf("error reading from response body: %v", rderr)
+				}
+				recvErrors.WithLabelValues("eof").Inc()
+				logger.Warning("encountered EOF while reading server response - consumer terminating")
+				return lastEventID, nil
+			case <-time.After(5 * time.Second):
+				logger.Warning("timeout reading from response body")
+				recvErrors.WithLabelValues("body_read_timeout").Inc()
+				return lastEventID, fmt.Errorf("timeout while reading from response body")
 			}
 
 			if len(bs) < 2 { //newline indicates end of event, emit this one, start populating a new one
@@ -137,12 +183,6 @@ func Notify(uri string, resumeID string, evCh chan<- *Event, stopChan <-chan boo
 			}
 
 			parseLine(bs, currEvent)
-
-			if err == io.EOF {
-				recvErrors.WithLabelValues("eof").Inc()
-				logger.Warning("encountered EOF while reading server response - consumer terminating")
-				return lastEventID, nil
-			}
 		}
 	}
 }

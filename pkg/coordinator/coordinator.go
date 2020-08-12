@@ -138,6 +138,9 @@ func (c *Coordinator) Start() (string, error) {
 					lastEventID = eid
 					if err != nil {
 						logger.Errorf("Event consumer exited with error: %v", err)
+						logger.Info("Backing off for 30 seconds")
+						time.Sleep(30 * time.Second)
+						logger.Info("Restarting SSE consumer")
 					}
 				}
 			}
@@ -175,6 +178,8 @@ func (c *Coordinator) Start() (string, error) {
 func (c *Coordinator) Stop() {
 	close(c.stop)
 	wgPub.Wait()
+	logger.Debug("publisher waitgroup finished - connection to kafka closed")
 	close(c.events)
 	wgSub.Wait()
+	logger.Debug("subscriber waitgroup finished - SSE connection closed")
 }

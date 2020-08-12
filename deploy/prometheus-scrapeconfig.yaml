@@ -6,3 +6,7 @@ scrape_configs:
     static_configs:
     - targets:
       - host.docker.internal:9000
+  - job_name: pleiades_local_2
+    static_configs:
+    - targets:
+      - host.docker.internal:9001

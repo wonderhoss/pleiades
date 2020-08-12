@@ -1,12 +1,11 @@
 package file
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
-
-	uuid "github.com/satori/go.uuid"
+	"strconv"
+	"time"
 
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/publisher"
@@ -54,7 +53,7 @@ func NewPublisher(opts *Opts, src <-chan *sse.Event) (publisher.Publisher, error
 		logger.Errorf("destination path %s exists and is file", dest)
 		return nil, fmt.Errorf("destination path %s exists as file", dest)
 	}
-	uid := uuid.NewV4().String()
+	uid := strconv.FormatInt(time.Now().Unix(), 10)
 	f := &Publisher{
 		source:      src,
 		destination: dest,
@@ -85,6 +84,10 @@ func (f *Publisher) ReadAndPublish() (int64, error) {
 			}
 		}
 	}
+	err := ioutil.WriteFile("./.pleiades_resumeID", []byte(f.lastEventID), 0644)
+	if err != nil {
+		logger.Error("unable to write last processed event ID to file .pleiades_resumeID: %v", err)
+	}
 	return f.msgCount, nil
 }
 
@@ -103,44 +106,18 @@ func (f *Publisher) ProcessEvent(e *sse.Event) error {
 		pubErrors.WithLabelValues("write").Inc()
 		return fmt.Errorf("error writing file: %v", err)
 	}
+	f.lastEventID = e.ID
 	return nil
 }
 
 // GetResumeID attempts to read the ID of the last processed event from disk and returns it
 func (f *Publisher) GetResumeID() string {
-	files, err := ioutil.ReadDir(f.destination)
+
+	data, err := ioutil.ReadFile("./.pleiades_resumeID")
+
 	if err != nil {
-		logger.Errorf("failed to read directory listing: %v", err)
+		logger.Errorf("failed to open resume ID file .pleiades_resumeID: %v", err)
 		return ""
 	}
-	var newestFile string
-	var newestTime int64
-	for _, file := range files {
-		fi, err := os.Stat(f.destination + "/" + file.Name())
-		if err != nil {
-			logger.Errorf("error getting stat of file %s: %v", file.Name(), err)
-			continue
-		}
-		currTime := fi.ModTime().UnixNano()
-		if currTime >= newestTime {
-			newestTime = currTime
-			newestFile = file.Name()
-		}
-	}
-	if newestFile == "" {
-		return ""
-	}
-	fh, err := os.Open(f.destination + "/" + newestFile)
-	defer fh.Close()
-	if err != nil {
-		logger.Errorf("failed to open file %s: %v", newestFile, err)
-		return ""
-	}
-	scanner := bufio.NewScanner(fh)
-	if !scanner.Scan() {
-		logger.Error("file is empty")
-		return ""
-	}
-	line := scanner.Text()
-	return line
+	return string(data)
 }

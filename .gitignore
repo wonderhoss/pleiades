@@ -1,3 +1,5 @@
 .env
 /pleiades
 events/
+dump.rdb
+.pleiades_resumeID
