@@ -17,12 +17,19 @@ func (f *Frontend) websocketHandler(w http.ResponseWriter, r *http.Request) {
 func (f *Frontend) statsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*") //remove later
+
 	julianDay := time.Now().Unix() / 86400
 
 	counters, err := f.getAllCounters(ctx, julianDay)
 	if err != nil {
 		logger.Errorf("Error retrieving Redis stats: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if counters == nil {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	resp := &Counters{
@@ -35,8 +42,6 @@ func (f *Frontend) statsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") //remove later
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, string(b))
 }
@@ -49,7 +54,6 @@ func (f *Frontend) getKeys(ctx context.Context, day int64) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Debugf("Got these keys: %+v", keys)
 
 	return keys, nil
 }
@@ -59,6 +63,9 @@ func (f *Frontend) getAllCounters(ctx context.Context, julianDay int64) ([]Count
 	keys, err := f.getKeys(ctx, julianDay)
 	if err != nil {
 		return nil, err
+	}
+	if len(keys) == 0 {
+		return nil, nil
 	}
 	out := make([]Counter, len(keys))
 	result, error := f.r.MGet(ctx, keys...).Result()

@@ -14,7 +14,6 @@ import (
 
 	"github.com/gargath/pleiades/pkg/aggregator"
 	"github.com/gargath/pleiades/pkg/log"
-	"github.com/gargath/pleiades/pkg/spinner"
 	"github.com/gargath/pleiades/pkg/util"
 )
 
@@ -84,10 +83,10 @@ func (a *Aggregator) Start() error {
 		}
 	}()
 
-	if !spinner.IsTTY() {
+	if !util.IsTTY() {
 		logger.Info("Terminal is not a TTY, not displaying progress indicator")
 	} else {
-		a.spinner = spinner.NewSpinner("Processing... ")
+		a.spinner = util.NewSpinner("Processing... ")
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

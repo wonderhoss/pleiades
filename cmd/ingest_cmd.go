@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/gargath/pleiades/pkg/ingester"
-	"github.com/gargath/pleiades/pkg/publisher/file"
-	"github.com/gargath/pleiades/pkg/publisher/kafka"
+	"github.com/gargath/pleiades/pkg/ingester/publisher/file"
+	"github.com/gargath/pleiades/pkg/ingester/publisher/kafka"
 	"github.com/spf13/cobra"
 )
 

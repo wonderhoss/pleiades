@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gargath/pleiades/pkg/ingester/publisher/file"
+	"github.com/gargath/pleiades/pkg/ingester/publisher/kafka"
+	"github.com/gargath/pleiades/pkg/ingester/sse"
 	"github.com/gargath/pleiades/pkg/log"
-	"github.com/gargath/pleiades/pkg/publisher/file"
-	"github.com/gargath/pleiades/pkg/publisher/kafka"
-	"github.com/gargath/pleiades/pkg/spinner"
-	"github.com/gargath/pleiades/pkg/sse"
+	"github.com/gargath/pleiades/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -141,6 +141,7 @@ func (c *Coordinator) Start() (string, error) {
 						logger.Info("Backing off for 30 seconds")
 						time.Sleep(30 * time.Second)
 						logger.Info("Restarting SSE consumer")
+						err = nil
 					}
 				}
 			}
@@ -148,10 +149,10 @@ func (c *Coordinator) Start() (string, error) {
 	}()
 	logger.Debug("subscriber is up")
 
-	if !spinner.IsTTY() {
+	if !util.IsTTY() {
 		logger.Info("Terminal is not a TTY, not displaying progress indicator")
 	} else {
-		c.spinner = spinner.NewSpinner("Processing... ")
+		c.spinner = util.NewSpinner("Processing... ")
 		wgPub.Add(1)
 		go func() {
 			defer wgPub.Done()

@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"github.com/gargath/pleiades/pkg/spinner"
 	"github.com/gargath/pleiades/pkg/util"
 	"github.com/go-redis/redis/v8"
 	"github.com/segmentio/kafka-go"
@@ -14,7 +13,7 @@ type Aggregator struct {
 	Redis   *util.RedisOpts
 	r       *redis.Client
 	k       *kafka.Reader
-	spinner *spinner.Spinner
+	spinner *util.Spinner
 }
 
 // Opts hold configuration for the kafka publisheru
