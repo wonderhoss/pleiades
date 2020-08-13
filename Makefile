@@ -46,7 +46,7 @@ vet:
 .PHONY: lint
 lint:
 	@ $(ECHO) "\033[36mLinting code\033[0m"
-	$(LINTER) run --disable-all \
+	$(LINTER) run --disable-all --build-tags dev \
                 --exclude-use-default=false \
                 --enable=govet \
                 --enable=ineffassign \
