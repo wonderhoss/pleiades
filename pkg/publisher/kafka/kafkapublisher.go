@@ -136,7 +136,6 @@ func (f *Publisher) GetResumeID() string {
 	defer cancel1()
 
 	c, err := kafka.DialLeader(co1, "tcp", f.destination.Brokers[0], f.destination.Topic, 0)
-
 	if err != nil {
 		logger.Errorf("Error connecting to leader for partition [0]: %v", err)
 		return ""
@@ -146,75 +145,47 @@ func (f *Publisher) GetResumeID() string {
 	if err != nil {
 		logger.Errorf("Error reading partitions: %v", err)
 	}
-	for _, p := range parts {
-		logger.Debugf("Found partition: %+v", p)
-	}
-
-	// ~TODO~: dial leader for every partition and read latest offset from each, then compare messages to find truly freshest
-
-	// l2, err := c.ReadLastOffset()
-	// if err != nil {
-	// 	logger.Debugf("Error getting last offset: %v", err)
-	// }
-	// logger.Debugf("Last Offset found: %d", l2)
-
-	// r := kafka.NewReader(kafka.ReaderConfig{
-	// 	Brokers:     f.destination.Brokers,
-	// 	Topic:       f.destination.Topic,
-	// 	ErrorLogger: &crudErrorLogger{},
-	// 	Logger:      newCrudLogger(),
-	// })
-
-	// r.SetOffset(l2 - 1)
-
-	// co, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	// defer cancel()
-	// msg, err := r.ReadMessage(co)
-	// if err != nil {
-	// 	logger.Errorf("Error reading latest message: %v", err)
-	// 	return ""
-	// }
-	// key := string(msg.Key)
-	// r.Close()
-
+	logger.Debugf("Read list of partitions from kafka")
 	latest, err := f.findLatestMessage(parts)
 	if err != nil {
 		logger.Infof("Error fetching Resume ID: %v", err)
 		return ""
 	}
-
 	return string(latest.Key)
 }
 
 func (f *Publisher) findLatestMessage(partitions []kafka.Partition) (*kafka.Message, error) {
-	messages := make([]*kafka.Message, len(partitions))
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
-	for i, p := range partitions {
-		c, err := kafka.DialLeader(ctx, "tcp", f.destination.Brokers[0], f.destination.Topic, p.ID)
-		if err != nil {
-			return nil, fmt.Errorf("Error connecting to leader for partition %d: %v", p.ID, err)
-		}
-		l, err := c.ReadLastOffset()
-		if err != nil {
-			return nil, fmt.Errorf("Error getting last offset from partition %d: %v", p.ID, err)
-		}
-		r := kafka.NewReader(kafka.ReaderConfig{
-			Brokers:     f.destination.Brokers,
-			Topic:       f.destination.Topic,
-			ErrorLogger: &crudErrorLogger{},
-			Logger:      newCrudLogger(),
-			Partition:   p.ID,
-		})
-		r.SetOffset(l - 1)
-		msg, err := r.ReadMessage(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("Error reading latest message from partition %d: %v", p.ID, err)
-		}
-		r.Close()
-		messages[i] = &msg
+	for _, p := range partitions {
+		logger.Debugf("Scanning t partition for latest messages: %+v", p)
 	}
 
+	// Ask each partition in parallel for latest message and collect
+	messages := make([]*kafka.Message, len(partitions))
+	messageErrors := []error{}
+	msgChan := make(chan (*kafka.Message))
+	errChan := make(chan (error))
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	for _, p := range partitions {
+		go f.getLatestMessageForPartition(ctx, p, msgChan, errChan)
+	}
+	for i := 0; i < len(partitions); i++ {
+		select {
+		case m := <-msgChan:
+			messages[i] = m
+		case e := <-errChan:
+			messageErrors = append(messageErrors, e)
+		}
+	}
+	if len(messageErrors) > 0 {
+		logger.Errorf("Errors during partition scan:")
+		for _, e := range messageErrors {
+			logger.Errorf(" - %v", e)
+		}
+		return nil, fmt.Errorf("unable to retrieve latest offset due to errors encountered during partition scan")
+	}
+
+	// Iterate over latest messages from each partition to find most recent timestamp
 	var latest *kafka.Message
 	var latestTS int64 = 0
 	for _, m := range messages {
@@ -237,4 +208,32 @@ func (f *Publisher) findLatestMessage(partitions []kafka.Partition) (*kafka.Mess
 		}
 	}
 	return latest, nil
+}
+
+func (f *Publisher) getLatestMessageForPartition(ctx context.Context, p kafka.Partition, m chan<- (*kafka.Message), e chan<- (error)) {
+	c, err := kafka.DialLeader(ctx, "tcp", f.destination.Brokers[0], f.destination.Topic, p.ID)
+	if err != nil {
+		e <- fmt.Errorf("Error connecting to leader for partition %d: %v", p.ID, err)
+		return
+	}
+	l, err := c.ReadLastOffset()
+	if err != nil {
+		e <- fmt.Errorf("Error getting last offset from partition %d: %v", p.ID, err)
+		return
+	}
+	r := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:     f.destination.Brokers,
+		Topic:       f.destination.Topic,
+		ErrorLogger: &crudErrorLogger{},
+		Logger:      newCrudLogger(),
+		Partition:   p.ID,
+	})
+	r.SetOffset(l - 1)
+	msg, err := r.ReadMessage(ctx)
+	if err != nil {
+		e <- fmt.Errorf("Error reading latest message from partition %d: %v", p.ID, err)
+		return
+	}
+	r.Close()
+	m <- &msg
 }

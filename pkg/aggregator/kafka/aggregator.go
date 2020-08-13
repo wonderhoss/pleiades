@@ -9,7 +9,7 @@ import (
 	"github.com/gargath/pleiades/pkg/aggregator"
 	"github.com/gargath/pleiades/pkg/log"
 	"github.com/gargath/pleiades/pkg/spinner"
-	"github.com/go-redis/redis/v8"
+	"github.com/gargath/pleiades/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/segmentio/kafka-go"
@@ -43,7 +43,7 @@ var (
 )
 
 // NewAggregator returns a Aggregator initialized with the kafka details provided
-func NewAggregator(redisOpts *aggregator.RedisOpts, opts *Opts) (*Aggregator, error) {
+func NewAggregator(redisOpts *util.RedisOpts, opts *Opts) (*Aggregator, error) {
 	a := &Aggregator{}
 	broker := opts.Broker
 	topic := opts.Topic
@@ -61,16 +61,10 @@ func NewAggregator(redisOpts *aggregator.RedisOpts, opts *Opts) (*Aggregator, er
 		WatchPartitionChanges: true,
 	})
 
-	r := redis.NewClient(&redis.Options{
-		Addr: redisOpts.RedisAddr,
-	})
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	pong, err := r.Ping(ctx).Result()
+	r, err := util.NewValidatedRedisClient(redisOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis at %s: %v", redisOpts.RedisAddr, err)
 	}
-	logger.Debugf("Connected to Redis: %v", pong)
 
 	a.r = r
 	a.Kafka = opts

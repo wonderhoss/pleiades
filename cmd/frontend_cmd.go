@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gargath/pleiades/pkg/frontend"
-
+	"github.com/gargath/pleiades/pkg/util"
+	"github.com/gargath/pleiades/pkg/web"
 	"github.com/spf13/cobra"
 )
 
@@ -29,9 +29,9 @@ func init() { //TODO: Use Sentinels
 }
 
 func startFrontend(cmd *cobra.Command, args []string) error {
-	f, err := frontend.NewFrontend(&frontend.Opts{
+	f, err := web.NewFrontend(&web.Opts{
 		ListenAddr: listenAddr,
-		Redis: &frontend.RedisOpts{
+		Redis: &util.RedisOpts{
 			RedisAddr: frontendRedis,
 		},
 	})

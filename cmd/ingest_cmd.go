@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gargath/pleiades/pkg/coordinator"
+	"github.com/gargath/pleiades/pkg/ingester"
 	"github.com/gargath/pleiades/pkg/publisher/file"
 	"github.com/gargath/pleiades/pkg/publisher/kafka"
 	"github.com/spf13/cobra"
@@ -16,7 +16,7 @@ It will begin consuming the WMF stream and publish received events to the config
 		RunE: startIngest,
 	}
 
-	c      *coordinator.Coordinator
+	c      *ingester.Coordinator
 	resume bool
 )
 
@@ -28,7 +28,7 @@ func startIngest(cmd *cobra.Command, args []string) error {
 
 	logger.Info("Ingest server starting...")
 
-	c = &coordinator.Coordinator{
+	c = &ingester.Coordinator{
 		Resume: resume,
 	}
 
