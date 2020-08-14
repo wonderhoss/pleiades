@@ -9,13 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/gargath/pleiades/pkg/aggregator"
 	"github.com/gargath/pleiades/pkg/log"
-	"github.com/gargath/pleiades/pkg/spinner"
+	"github.com/gargath/pleiades/pkg/util"
 )
 
 const moduleName = "file-agg"
@@ -37,7 +36,7 @@ var (
 )
 
 // NewAggregator returns a Aggregator initialized with the source path provided
-func NewAggregator(redisOpts *aggregator.RedisOpts, opts *Opts) (*Aggregator, error) {
+func NewAggregator(redisOpts *util.RedisOpts, opts *Opts) (*Aggregator, error) {
 	a := &Aggregator{}
 	src := opts.Source
 	if src == "" {
@@ -51,16 +50,10 @@ func NewAggregator(redisOpts *aggregator.RedisOpts, opts *Opts) (*Aggregator, er
 		return nil, fmt.Errorf("source path %s exists as file", src)
 	}
 
-	r := redis.NewClient(&redis.Options{
-		Addr: redisOpts.RedisAddr,
-	})
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	pong, err := r.Ping(ctx).Result()
+	r, err := util.NewValidatedRedisClient(redisOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis at %s: %v", redisOpts.RedisAddr, err)
 	}
-	logger.Debugf("Connected to Redis: %v", pong)
 
 	a.r = r
 	a.File = opts
@@ -90,10 +83,10 @@ func (a *Aggregator) Start() error {
 		}
 	}()
 
-	if !spinner.IsTTY() {
+	if !util.IsTTY() {
 		logger.Info("Terminal is not a TTY, not displaying progress indicator")
 	} else {
-		a.spinner = spinner.NewSpinner("Processing... ")
+		a.spinner = util.NewSpinner("Processing... ")
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

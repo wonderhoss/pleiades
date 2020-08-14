@@ -6,11 +6,6 @@ type Server interface {
 	Stop()
 }
 
-// RedisOpts contains connection options for the Redis server
-type RedisOpts struct {
-	RedisAddr string
-}
-
 // Meta comment
 type Meta struct {
 	Domain    string `json:"domain,omitempty"`

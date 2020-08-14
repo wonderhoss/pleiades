@@ -1,8 +1,7 @@
 package file
 
 import (
-	"github.com/gargath/pleiades/pkg/aggregator"
-	"github.com/gargath/pleiades/pkg/spinner"
+	"github.com/gargath/pleiades/pkg/util"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -10,9 +9,9 @@ import (
 type Aggregator struct {
 	File    *Opts
 	stop    chan (bool)
-	Redis   *aggregator.RedisOpts
+	Redis   *util.RedisOpts
 	r       *redis.Client
-	spinner *spinner.Spinner
+	spinner *util.Spinner
 }
 
 // Opts hold config options for the file publisher

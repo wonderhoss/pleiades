@@ -4,6 +4,7 @@ import (
 	"github.com/gargath/pleiades/pkg/aggregator"
 	"github.com/gargath/pleiades/pkg/aggregator/file"
 	"github.com/gargath/pleiades/pkg/aggregator/kafka"
+	"github.com/gargath/pleiades/pkg/util"
 
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,7 @@ func startAggregator(cmd *cobra.Command, args []string) error {
 
 	var a aggregator.Server
 	var aggErr error
-	redisOpts := &aggregator.RedisOpts{RedisAddr: redis}
+	redisOpts := &util.RedisOpts{RedisAddr: redis}
 	if fileOn {
 		a, aggErr = file.NewAggregator(redisOpts, &file.Opts{
 			Source: fileDir,
