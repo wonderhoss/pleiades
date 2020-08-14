@@ -9,6 +9,9 @@ ECHO := echo
 .PHONY: all
 all: test build
 
+.PHONY: release
+release: clean lint vet test web generate $(BINARY)
+
 .PHONY: build
 build: clean web generate $(BINARY)
 
@@ -29,9 +32,9 @@ clean:
 
 .PHONY: distclean
 distclean: clean
+	make -C web distclean
 	rm -f .env
 	rm -f dump.rdb
-	make -C web distclean
 
 # Run go fmt against code
 .PHONY: fmt

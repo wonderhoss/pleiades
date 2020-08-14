@@ -12,6 +12,7 @@ distclean: clean
 	rm -rf node_modules
 
 .PHONY: deps
+deps:
 	$(NPM) ci
 
 .PHONY: dev

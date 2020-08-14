@@ -17,7 +17,7 @@ import store from "./store";
 
 import App from '../components/App'
 import Home from '../components/Home.vue'
-import BignumCharts from '../components/BignumCharts.vue'
+import BignumCharts from '../components/BigNumCharts.vue'
 import WikipediaCharts from '../components/WikipediaCharts.vue'
 import WiktionaryCharts from '../components/WiktionaryCharts.vue'
 

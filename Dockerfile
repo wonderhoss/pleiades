@@ -1,8 +1,8 @@
-FROM golang:1.14.6 AS builder
+FROM gargath/combined-builder:latest AS builder
 COPY . /go/src/github.com/gargath/pleiades
 WORKDIR /go/src/github.com/gargath/pleiades
 RUN go mod download
-RUN ./configure --without-ginkgo --without-linter && make pleiades
+RUN ./configure && make release
 
 FROM alpine:latest
 COPY --from=builder /go/src/github.com/gargath/pleiades/pleiades .
