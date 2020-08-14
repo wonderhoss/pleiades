@@ -18,11 +18,13 @@ var (
 		RunE: startAggregator,
 	}
 
-	redis string
+	redis            string
+	redisUseSentinel bool
 )
 
 func init() { //TODO: Use Sentinels
 	cmdAgg.Flags().StringVar(&redis, "redis-addr", "localhost:6379", "the Redis server to write aggregated stats to")
+	cmdAgg.Flags().BoolVar(&redisUseSentinel, "redis-use-sentinel", false, "should Redis use Sentinel for connect")
 }
 
 func startAggregator(cmd *cobra.Command, args []string) error {
@@ -30,7 +32,7 @@ func startAggregator(cmd *cobra.Command, args []string) error {
 
 	var a aggregator.Server
 	var aggErr error
-	redisOpts := &util.RedisOpts{RedisAddr: redis}
+	redisOpts := &util.RedisOpts{RedisAddr: redis, RedisUseSentinel: redisUseSentinel}
 	if fileOn {
 		a, aggErr = file.NewAggregator(redisOpts, &file.Opts{
 			Source: fileDir,
