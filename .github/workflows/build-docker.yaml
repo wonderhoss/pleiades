@@ -2,7 +2,7 @@ name: Build Docker Image
 on:
     push:
         branches:
-            - master
+            - maineline
     release:
         types: [released, prereleased]
 jobs:
