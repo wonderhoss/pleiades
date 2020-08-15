@@ -39,6 +39,8 @@ var (
 			Help: "Number of events processed",
 		},
 	)
+
+	retries int
 )
 
 // NewAggregator returns a Aggregator initialized with the kafka details provided
@@ -88,7 +90,11 @@ func (a *Aggregator) Start() error {
 			default:
 				err := a.run()
 				if err != nil {
+					retries = retries + 1
 					logger.Errorf("Aggregator exited with error: %v", err)
+				}
+				if retries > 5 {
+					logger.Fatalf("Bailing after 5 failed restarts")
 				}
 			}
 		}
@@ -142,6 +148,9 @@ func (a *Aggregator) run() error {
 			}
 			var pErr error
 			pErr = a.processEvent(msg.Key, msg.Value)
+			if pErr == nil {
+				retries = 0
+			}
 			return pErr
 		}
 	}
