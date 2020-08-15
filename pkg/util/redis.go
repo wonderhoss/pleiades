@@ -17,9 +17,17 @@ var (
 
 // NewValidatedRedisClient creates a new redis client and performs a PING before returning it
 func NewValidatedRedisClient(opts *RedisOpts) (*redis.Client, error) {
-	r := redis.NewClient(&redis.Options{
-		Addr: opts.RedisAddr,
-	})
+	var r *redis.Client
+	if opts.RedisUseSentinel {
+		r = redis.NewFailoverClient(&redis.FailoverOptions{
+			SentinelAddrs: []string{opts.RedisAddr},
+			MasterName:    "mymaster",
+		})
+	} else {
+		r = redis.NewClient(&redis.Options{
+			Addr: opts.RedisAddr,
+		})
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	pong, err := r.Ping(ctx).Result()

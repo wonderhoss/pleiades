@@ -31,6 +31,7 @@ func (f *Frontend) Stop() {
 // Start starts the server
 func (f *Frontend) Start() error {
 	r := mux.NewRouter()
+	r.Use(prometheusMiddleware)
 	sr := r.PathPrefix("/api").Subrouter()
 	sr.HandleFunc("/stats", f.statsHandler)
 	//	s.HandleFunc("/stats/{key}", f.singleStatHandler)
