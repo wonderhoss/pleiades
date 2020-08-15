@@ -21,7 +21,7 @@ func NewValidatedRedisClient(opts *RedisOpts) (*redis.Client, error) {
 	if opts.RedisUseSentinel {
 		r = redis.NewFailoverClient(&redis.FailoverOptions{
 			SentinelAddrs: []string{opts.RedisAddr},
-			MasterName:    mymaster,
+			MasterName:    "mymaster",
 		})
 	} else {
 		r = redis.NewClient(&redis.Options{
