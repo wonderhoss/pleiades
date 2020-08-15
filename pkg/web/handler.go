@@ -8,6 +8,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	counterDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "pleiades_web_counter_marshal_duration_seconds",
+		Help: "Time taken to generate the stats json",
+	})
 )
 
 func (f *Frontend) websocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +69,8 @@ func (f *Frontend) getKeys(ctx context.Context, day int64) ([]string, error) {
 }
 
 func (f *Frontend) getAllCounters(ctx context.Context, julianDay int64) ([]Counter, error) {
+	timer := prometheus.NewTimer(counterDuration)
+
 	prefix := fmt.Sprintf("day_%d_", julianDay)
 	keys, err := f.getKeys(ctx, julianDay)
 	if err != nil {
@@ -88,6 +100,7 @@ func (f *Frontend) getAllCounters(ctx context.Context, julianDay int64) ([]Count
 			Value:       parsedVal,
 		}
 	}
+	timer.ObserveDuration()
 	return out, nil
 }
 
