@@ -180,15 +180,14 @@ export default new Vuex.Store({
         },
         fetchDays({ commit, state }) {
             if ((state.days == undefined) || (state.days.length == 0)) {
-                //          fetch('/api/days', {mode: 'cors'})
-                              fetch('http://localhost:8080/api/days', {mode: 'cors'})
+                          fetch('/api/days', {mode: 'cors'})
+                //              fetch('http://localhost:8080/api/days', {mode: 'cors'})
                             .then(res => { return res.json()})
                             .then(statsJSON => {
                                 let ds = statsJSON.reverse();
                                 let update = [];
                                 for (const d of ds) {
                                     let dob = new Date(d * 86400 * 1000);
-                                    console.log(d + " - " + dob.toISOString())
                                     update.push({id: d, date: dob.toISOString().substring(0,10)});
                                 }
                                 commit("updateDays", update);
