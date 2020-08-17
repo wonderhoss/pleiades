@@ -7,9 +7,9 @@
             Wikipedia, Wiktionary and associated Wikis.
         </p>
         <p>
-            Data is updated in near-real-time. More information to follow soon.
+            Data is updated in near-real-time and available as daily aggregates since 2020-08-15.
         </p>
-      <p><a class="btn btn-primary btn-lg" href="#" role="button">Learn more &raquo;</a></p>
+      <p><a class="btn btn-primary btn-lg" href="https://github.com/gargath/pleiades" role="button">Learn more &raquo;</a></p>
     </b-jumbotron>
 
   </div>
