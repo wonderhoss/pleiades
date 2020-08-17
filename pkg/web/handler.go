@@ -187,7 +187,7 @@ func (f *Frontend) getDays(ctx context.Context) ([]Day, error) {
 	for _, v := range keys {
 		d := strings.Split(v, "_")[1]
 		dNum, _ := strconv.Atoi(d)
-		if dNum > 18488 {
+		if dNum > 18488 { // data before this date is spurious because the ingest wasn't running. All we have is events that arrived out of sequence
 			uniqueDays[d] = true
 		}
 	}
