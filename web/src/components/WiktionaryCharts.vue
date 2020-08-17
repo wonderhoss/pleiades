@@ -1,12 +1,12 @@
 <template>
   <div class="container" style="width:100%;margin:10px;">
     <h1>Wiktionary Update Statistics</h1>
+    <DaysDropdown></DaysDropdown>
     <div>Total updates since <em>{{timestamp}}</em>: <strong>{{total}}</strong></div>
     <div>
       <h2>Top 15 Updated Wiktionaries</h2>
-      <div class="chart" ref="chartdiv" style="min-height: 600px; min-width: 800px"></div>
-      <h2>Top 15 Updates Wiktionaries</h2>
-      <div class="chart" ref="piechartdiv" style="min-height: 600px; min-width: 800px"></div>
+      <div class="chart" ref="chartdiv" style="min-height:500px;"></div>
+      <div class="chart" ref="piechartdiv" style="min-height:500px;"></div>
     </div>
   </div>
 </template>
@@ -18,10 +18,15 @@ import am4themes_animated from "@amcharts/amcharts4/themes/animated";
 
 import { mapState } from "vuex";
 
+import DaysDropdown from './DaysDropdown.vue';
+
 am4core.useTheme(am4themes_animated);
 
 export default {
   name: 'WiktionaryCharts',
+  components: {
+    DaysDropdown,
+  },
   created() {
     this.$store.dispatch("refresh");
     this.unwatch= this.$store.watch(

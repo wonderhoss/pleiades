@@ -11,8 +11,10 @@ Vue.use(Vuex);
 export default new Vuex.Store({
     state: {
         counters: [],
+        days: [],
         total: NaN,
         timestamp: NaN,
+        historic: 0,
     },
     getters: {
         wikiStats: state => {
@@ -138,12 +140,26 @@ export default new Vuex.Store({
         },
         updateTotal(state, total) {
             state.total = total;
+        },
+        updateHistoric(state, day) {
+            state.historic = day;
+        },
+        updateDays(state, days) {
+            state.days = days;
         }
     },
     actions: {
-        refresh({ commit }) {
-//            fetch('http://localhost:8080/api/stats', {mode: 'cors'})
-            fetch('/api/stats', {mode: 'cors'})
+        refresh({ commit, state }) {
+            var query;
+            if (state.historic == 0) {
+                query = '/api/stats';
+//                  query = 'http://localhost:8080/api/stats';
+            } else {
+                query = '/api/stats/' + state.historic;
+//                  query = 'http://localhost:8080/api/stats/' + state.historic;
+
+            }
+            fetch(query, {mode: 'cors'})
             .then(res => { return res.json()})
             .then(statsJSON => {
                 let timestamp = statsJSON.Since;
@@ -154,7 +170,30 @@ export default new Vuex.Store({
                 commit("updateTotal", totalCounter.Value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","));
                 commit("updateTimestamp", formattedDate);
                 commit("updateCounters", statsJSON.Counters);
-            });
-        }
+            })
+            .catch(error => {
+                console.log("Failed to retrieve data: "+ error);
+                commit("updateTotal", 0);
+                commit("updateTimestamp", "---");
+                commit("updateCounters", []);
+            })
+        },
+        fetchDays({ commit, state }) {
+            if ((state.days == undefined) || (state.days.length == 0)) {
+                //          fetch('/api/days', {mode: 'cors'})
+                              fetch('http://localhost:8080/api/days', {mode: 'cors'})
+                            .then(res => { return res.json()})
+                            .then(statsJSON => {
+                                let ds = statsJSON.reverse();
+                                let update = [];
+                                for (const d of ds) {
+                                    let dob = new Date(d * 86400 * 1000);
+                                    console.log(d + " - " + dob.toISOString())
+                                    update.push({id: d, date: dob.toISOString().substring(0,10)});
+                                }
+                                commit("updateDays", update);
+                            });
+            }
+        },
     },
 });

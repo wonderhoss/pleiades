@@ -1,6 +1,7 @@
 <template>
     <div class="container" style="width:100%;margin:10px;">
     <h1>Big Update Statistics</h1>
+    <DaysDropdown></DaysDropdown>
     <div>Total updates since <em>{{timestamp}}</em>: <strong>{{total}}</strong></div>
     <div>
       <table class="stats">
@@ -36,8 +37,13 @@
 <script>
 import { mapState } from "vuex";
 
+import DaysDropdown from './DaysDropdown.vue';
+
 export default {
   name: 'BignumCharts',
+  components: {
+    DaysDropdown,
+  },
   created() {
       this.$store.dispatch("refresh");
       this.unwatch= this.$store.watch(
