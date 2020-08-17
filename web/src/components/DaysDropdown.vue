@@ -6,7 +6,7 @@
       <b-dropdown class="days-dropdown" :text="historic.id == 0 ? 'current' : historic.date" id="days">
         <b-dropdown-item href="#" :id="0" @click="selectDay(0)">today</b-dropdown-item>
         <template v-for="day in days">
-          <b-dropdown-item href="#" :id="day.id" v-bind:key="day.id" @click="selectDay(day.id)">{{day.date}} - {{day.id}}</b-dropdown-item>
+          <b-dropdown-item href="#" :id="day.id" v-bind:key="day.id" @click="selectDay(day.id)">{{day.date}}</b-dropdown-item>
         </template>
       </b-dropdown>
     </div>

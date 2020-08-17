@@ -186,7 +186,10 @@ func (f *Frontend) getDays(ctx context.Context) ([]Day, error) {
 	uniqueDays := make(map[string]bool)
 	for _, v := range keys {
 		d := strings.Split(v, "_")[1]
-		uniqueDays[d] = true
+		dNum, _ := strconv.Atoi(d)
+		if dNum > 18488 {
+			uniqueDays[d] = true
+		}
 	}
 	d := []string{}
 	for k := range uniqueDays {
