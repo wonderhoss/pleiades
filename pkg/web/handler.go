@@ -5,23 +5,51 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	counterDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+	counterDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "pleiades_web_counter_marshal_duration_seconds",
 		Help: "Time taken to generate the stats json",
-	})
+	}, []string{"operation"})
 )
 
 func (f *Frontend) websocketHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
+}
+
+func (f *Frontend) daysHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*") //remove later
+
+	days, err := f.getDays(ctx)
+	if err != nil {
+		logger.Errorf("Error retrieving available days from Redis keys: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if days == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	b, err := json.Marshal(days)
+	if err != nil {
+		logger.Errorf("Error marshalling stats respone: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(b))
 }
 
 func (f *Frontend) statsHandler(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +84,45 @@ func (f *Frontend) statsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(b))
 }
 
-// TODO: Below are duplicated between this handler and freezedry. Refactor to reduce.
+func (f *Frontend) statsForDayHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	julianDay, err := strconv.ParseInt(vars["day"], 10, 64)
+	if err != nil {
+		logger.Infof("Rejecting invalid day format %s: %v", vars["day"], err)
+		w.WriteHeader(http.StatusBadRequest) //TODO: Add an error response that is useful
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*") //remove later
+
+	counters, err := f.getAllCounters(ctx, julianDay)
+	if err != nil {
+		logger.Errorf("Error retrieving Redis stats: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if counters == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	resp := &Counters{
+		Since:    julianDay * 86400,
+		Counters: counters,
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		logger.Errorf("Error marshalling stats respone: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, string(b))
+}
+
 func (f *Frontend) getKeys(ctx context.Context, day int64) ([]string, error) {
 	prefix := fmt.Sprintf("day_%d_pleiades*", day)
 	logger.Debugf("getting counters for prefix %s", prefix)
@@ -69,7 +135,7 @@ func (f *Frontend) getKeys(ctx context.Context, day int64) ([]string, error) {
 }
 
 func (f *Frontend) getAllCounters(ctx context.Context, julianDay int64) ([]Counter, error) {
-	timer := prometheus.NewTimer(counterDuration)
+	timer := prometheus.NewTimer(counterDuration.WithLabelValues("get_counters"))
 
 	prefix := fmt.Sprintf("day_%d_", julianDay)
 	keys, err := f.getKeys(ctx, julianDay)
@@ -107,4 +173,30 @@ func (f *Frontend) getAllCounters(ctx context.Context, julianDay int64) ([]Count
 func (f *Frontend) getCounter(ctx context.Context, name string) (Counter, error) {
 	c := Counter{}
 	return c, nil
+}
+
+func (f *Frontend) getDays(ctx context.Context) ([]Day, error) {
+	timer := prometheus.NewTimer(counterDuration.WithLabelValues("get_days"))
+
+	keys, err := f.r.Keys(ctx, "day_*").Result()
+	if err != nil {
+		return nil, err
+	}
+
+	uniqueDays := make(map[string]bool)
+	for _, v := range keys {
+		d := strings.Split(v, "_")[1]
+		uniqueDays[d] = true
+	}
+	d := []string{}
+	for k := range uniqueDays {
+		d = append(d, k)
+	}
+	sort.Strings(d)
+	out := make([]Day, len(d))
+	for i, v := range d {
+		out[i] = Day(v)
+	}
+	timer.ObserveDuration()
+	return out, nil
 }

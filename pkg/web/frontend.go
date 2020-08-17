@@ -34,6 +34,8 @@ func (f *Frontend) Start() error {
 	r.Use(prometheusMiddleware)
 	sr := r.PathPrefix("/api").Subrouter()
 	sr.HandleFunc("/stats", f.statsHandler)
+	sr.HandleFunc("/stats/{day}", f.statsForDayHandler)
+	sr.HandleFunc("/days", f.daysHandler)
 	//	s.HandleFunc("/stats/{key}", f.singleStatHandler)
 	//	r.HandleFunc("/ws", f.websocketHandler)
 

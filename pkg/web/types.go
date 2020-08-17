@@ -33,3 +33,6 @@ type Counter struct {
 	Description string
 	Value       int64
 }
+
+// Day is a single day we have stats for
+type Day string
