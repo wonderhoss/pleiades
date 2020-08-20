@@ -3,8 +3,11 @@
 * _Note: Pleiades is a demonstration project, provided as-is_
 
 <img align="left" width="" height="" src="https://raw.githubusercontent.com/gargath/pleiades/mainline/pleiades_logo.png" alt="Pleiades Logo">
-Pleiades subscribes to the `recentchange` event stream [provided by the Wikimedia Foundation](https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams) and re-publishes each event received to either a Kafka topic or a separate file on the filesystem.
-These events are then aggregated into daily-reset Redis counters which can be visualised using a built-in web frontend.
+Pleiades is a data aggregator that transforms information on editing events of the world's Wikipedias and associated Wikis into aggregate data
+which may be used, e.g. to calculate trends over time.
+
+More specifically, Pleiades subscribes to the `recentchange` event stream [provided by the Wikimedia Foundation](https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams) and re-publishes each event received to either a Kafka topic or a separate file on the filesystem.
+These events are then aggregated into per-day Redis counters which can be visualised using a built-in web frontend.
 
 Pleiades supports resuming subscriptions of the WMF stream from historic event IDs in case of interruption.
 
@@ -107,7 +110,7 @@ Pleiades exposes the following metrics in addition to the standard go runtime st
 | `pleiades_web_counter_marshal_duration_seconds` | histogram | Time taken to marshal JSON for response bodies |
 
 
-## Running in KIND
+## Running in KIND (WIP)
 
 [Kind](https://kind.sigs.k8s.io/) (or kubernetes-in-docker) is a tool for standing up kubernetes clusters on your local machine for testing purposes.
 
