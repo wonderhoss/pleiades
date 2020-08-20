@@ -30,7 +30,7 @@ up with even large load spikes, it performs no processing on the received events
 The use of Kafka has a number of advantages:
 * It creates a buffer between ingest and aggregation and allows fanning out the data one event at a time to multiple aggregators
 * It provides persistence, allowing a failed aggregation to be repeated
-* It enables additional consumers to be added in the future, e.g. ƒor publishing the event data to Elasticsearch
+* It enables additional consumers to be added in the future, e.g. for publishing the event data to Elasticsearch
 
 
 ### Aggregation
