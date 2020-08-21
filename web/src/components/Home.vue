@@ -3,7 +3,7 @@
   <div>
     <b-jumbotron header="Welcome to Pleiades!" lead="Showing you Wikimedia Stats since the Pandemic!">
         <p>
-            Pleiades is a stats aggregator that offers a glimps into the editing activity of the world's editors of
+            Pleiades is a stats aggregator that offers a glimpse into the editing activity of the world's editors of
             Wikipedia, Wiktionary and associated Wikis.
         </p>
         <p>
